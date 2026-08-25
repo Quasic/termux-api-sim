@@ -1,7 +1,12 @@
-#!@TERMUX_PREFIX@/bin/bash
+#!/bin/bash
 set -e -u
 
 SCRIPTNAME=termux-toast
+
+for toastfile in "$TERMUX_TOASTFILE" /dev/shm/termux.toast /tmp/termux.toast ~/termux.toast
+do [ -n "$toastfile" ]&&touch "$toastfile" 2>/dev/null&&break
+done
+
 show_usage () {
 	echo "Usage: termux-toast [-b bgcolor] [-c color] [-g gravity] [-s] [text]"
 	echo "Show text in a Toast (a transient popup)."
@@ -45,4 +50,4 @@ fi
 # Trim trailing newlines
 TOAST_TEXT="$(echo "$TOAST_TEXT")"
 
-echo "$TOAST_TEXT" | $CMD
+echo "$CMD $TOAST_TEXT" > "$toastfile"
