@@ -1,10 +1,17 @@
-#!@TERMUX_PREFIX@/bin/sh
+#!/bin/dash
 set -e -u
 
 SCRIPTNAME=termux-clipboard-set
+
+for clipfile in "$TERMUX_CLIPFILE" /dev/shm/termux.clip /tmp/termux.clip ~/termux.clip
+do [ -n "$clipfile" ]&&touch "$clipfile" 2>/dev/null&&break
+done
+
 show_usage () {
-    echo "Usage: $SCRIPTNAME [text]"
-    echo "Set the system clipboard text. The text to set is either supplied as arguments or read from stdin if no arguments are given."
+	cat >&2 <<EOF
+Usage: $SCRIPTNAME [text]
+Set dummy clipboard ($clipfile) text. The text to set is either supplied as arguments or read from stdin if no arguments are given."
+EOF
     exit 0
 }
 
@@ -17,10 +24,9 @@ do
 done
 shift $((OPTIND-1))
 
-CMD="@TERMUX_PREFIX@/libexec/termux-api Clipboard -e api_version 2 --ez set true"
 if [ $# = 0 ]; then
-	$CMD
+	cat
 else
-	echo -n "$@" | $CMD
-fi
+	echo -n "$@"
+fi > "$clipfile"
 
