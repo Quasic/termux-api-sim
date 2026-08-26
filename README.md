@@ -9,6 +9,7 @@ This is currently a work in progress. As need arises, or the inspiration hits me
 run dash install.sh [options|--help] <bin install dir>
 
 ## Usage
+The point is to match the usage of actual termux-api commands, but adding direction for the simulation where needed. Direction is given in environment variables or sometimes parameters holding messages that normally are shown to users.
 
 A lot of the commands leave temporary files behind when run. These files can be placed into a directory given by environment variable $TERMUX_SIM_DIR. They also have individual ones that override that one. If neither is set the default is one of /dev/shm, /tmp, or the home directory are used, in that order of precedence.
 
