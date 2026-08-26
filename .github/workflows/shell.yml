@@ -1,0 +1,25 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ "sim", "wip" ]
+  pull_request:
+    branches: [ "sim", "wip" ]
+  workflow_dispatch:
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@main
+
+    - name: bash -n
+      run: for f in scripts/*.sh;do bash -n "$f"||break;done
+
+    - name: Install shellcheck
+      run: sudo apt-get update&&sudo apt-get install -y shellcheck
+
+    - name: Run shellcheck
+      run: shellcheck scripts/*.sh
+
