@@ -23,5 +23,5 @@ Currently functional simulations:
 ## License
 MIT, as I based this on the original scripts under that license.
 
-## Author
-This is a fork from [termux/termux-api-package](https://github.com/termux/termux-api-package) with many authors.
+## References
+This is a fork from [termux/termux-api-package](https://github.com/termux/termux-api-package) and [termux/termux-api](https://github.com/termux/termux-api-package) was used for reference.
