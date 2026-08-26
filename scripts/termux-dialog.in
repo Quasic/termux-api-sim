@@ -131,7 +131,7 @@ widget_usage () {
             echo "    $OPT_TITLE_DESC"
             ;;
         *)
-            echo "\tUnknown usage for '$1'"
+            echo "    Unknown usage for '$1'"
             ;;
     esac
 }
