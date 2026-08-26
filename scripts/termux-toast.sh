@@ -47,7 +47,7 @@ else
 	TOAST_TEXT="$*"
 fi
 
-#shellcheck disable=SC2116 Trim trailing newlines
+#shellcheck disable=SC2116 # Trim trailing newlines
 TOAST_TEXT="$(echo "$TOAST_TEXT")"
 
 echo "$CMD $TOAST_TEXT" > "$toastfile"
