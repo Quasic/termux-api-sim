@@ -1,11 +1,15 @@
-#!@TERMUX_PREFIX@/bin/sh
+#!/bin/sh
 set -e -u
 
 SCRIPTNAME=termux-torch
 
+for torchfile in "$TERMUX_TOASTFILE" "$TERMUX_SIM_DIR/termux.toast" /dev/shm/termux.toast /tmp/termux.toast ~/termux.toast
+do [ -n "$torchfile" ]&&touch "$torchfile" 2>/dev/null&&break
+done
+
 show_usage () {
 	echo "Usage: $SCRIPTNAME [on | off]"
-	echo "Toggle LED Torch on device"
+	echo "Toggle LED Torch on dummy device"
 	exit 1
 }
 
@@ -25,4 +29,4 @@ else
 	show_usage
 fi
 
-@TERMUX_PREFIX@/libexec/termux-api Torch $PARAMS
+printf %s "@TERMUX_PREFIX@/libexec/termux-api Torch $PARAMS">"$torchfile"

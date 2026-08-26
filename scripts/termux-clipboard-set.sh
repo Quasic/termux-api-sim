@@ -3,7 +3,7 @@ set -e -u
 
 SCRIPTNAME=termux-clipboard-set
 
-for clipfile in "$TERMUX_CLIPFILE" /dev/shm/termux.clip /tmp/termux.clip ~/termux.clip
+for clipfile in "$TERMUX_CLIPFILE" "$TERMUX_SIM_DIR/termux.clip" /dev/shm/termux.clip /tmp/termux.clip ~/termux.clip
 do [ -n "$clipfile" ]&&touch "$clipfile" 2>/dev/null&&break
 done
 

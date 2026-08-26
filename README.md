@@ -10,11 +10,14 @@ run dash install.sh [options|--help] <bin install dir>
 
 ## Usage
 
+A lot of the commands leave temporary files behind when run. These files can be placed into a directory given by environment variable $TERMUX_SIM_DIR. They also have individual ones that override that one. If neither is set the default is one of /dev/shm, /tmp, or the home directory are used, in that order of precedence.
+
 Currently functional simulations:
 * termux-clipboard-get reads the clip file created by termux-clipboard-set ($TERMUX_CLIPFILE can be used to select which one)
-* termux-clipboard-set creates a file named termux.clip in one of /dev/shm, /tmp, or the home directory, in that order of precedence. This may be changed by setting TERMUX_CLIPFILE to the file path to use, (absolute path recommended.)
+* termux-clipboard-set creates a file named termux.clip in $TERMUX_SIM_DIR or default directory. This may be changed by setting TERMUX_CLIPFILE to the file path to use, (absolute path recommended.)
 * termux-dialog simulates user input, either randomly or by following queues in $TERMUX_DIALOG_SIM, title or hint text, whichever matches first (I am currently working on supporting more widgets)
-* termux-toast creates a file named termux.toast in one of /dev/shm, /tmp, or the home directory, in that order of precedence. This may be changed by setting TERMUX_TOASTFILE to the file path to use, (absolute path recommended.)
+* termux-toast creates a file named termux.toast in $TERMUX_SIM_DIR or default directory. This may be changed by setting TERMUX_TOASTFILE to the file path to use, (absolute path recommended.)
+* termux-torch creates a file named termux.torch in $TERMUX_SIM_DIR or default directory. This may be changed by setting TERMUX_TORCHFILE to the file path to use, (absolute path recommended.)
 
 
 ## License
