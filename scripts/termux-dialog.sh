@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e -u
+# https://github.com/termux/termux-api/blob/master/app%2Fsrc%2Fmain%2Fjava%2Fcom%2Ftermux%2Fapi%2Fapis%2FDialogAPI.java
 
 DEFAULT_WIDGET="text"
 
@@ -267,30 +268,408 @@ fi
 code=''
 text=''
 index=''
+values=''
 error=''
-incomp=0
+incomp=''
+look=''
 
 trysimread(){
 	case "$1" in
-	cancel|no) code=-2;return 0;;
-	yes) code=-1;return 0;;
-	pick\ *) code=0;text="${1%pick }";return 0;;
-	turn) code=-2;incomp=1;return 0;;
-	random) return 0;;
+	'') return 1;;
+	cancel@|no@) code=-2;return 0;;
+	yes@) code=-1;return 0;;
+	pick@*) code=-1;text="${1#pick@}";look=text;return 0;;
+	index@*)
+		index="${1#index@}"
+		case "$index" in
+		*[^0-9]*) index='';return 1;;
+		*) code=-1;look=index;return 0;;
+		esac;;
+	turn@) code=-2;incomp=1;return 0;;
+	random@) return 0;;
 	esac
 	return 1
 }
-trysimread "$TERMUX_DIALOG_SIM"||trysimread "$OPT_T"||trysimread "$OPT_I"
+trysimread "${TERMUX_DIALOG_SIM:-}"||trysimread "$OPT_T"||trysimread "$OPT_I"
+
+# better to use jq or python or something but this avoids dependencies for now
+json_quote() {
+	Q="${1//\\/\\\\}"
+	Q="${Q//
+/\\n}"
+	Q="${Q//\"/\\\"}"
+	Q="${Q//	/\t}"
+}
 
 case "$WIDGET" in
 confirm)
 	if [ "$code" = '' ]
 	then code=$(((RANDOM&1)-2))
 	fi
-	if [ "$code" = -1 ]
+	if [ "$code" = -1 ]&&[ "$text" != no ]
 	then text=yes
 	else text=no
+	fi
+	index=0
+	code=0;;
+counter)
+	if [ -z "$ARG_R" ]
+	then
+		min=0
+		max=100
+		counter=50
+		extra=''
+	else IFS=, read -r min max counter extra <<<"$OPT_R"
+	fi
+	if [ -n "$extra" ]||[ -z "$counter" ]||[[ "$counter" =~ [^0-9] ]]||[ -z "$min" ]||[[ "$min" =~ [^0-9] ]]||[ -z "$max" ]||[[ "$max" =~ [^0-9] ]]
+	then
+		error="Invalid range! Must be 3 int values!";
+		code=-2
+	else
+		if [ "$min" -gt "$max" ]
+		then
+			tmp=$min
+			min=$max
+			max=$tmp
+		fi
+		# counter can extend past bounds
+		[ "$counter" -lt "$min" ]&&min="$counter"
+		[ "$counter" -gt "$max" ]&&max="$counter"
+		if [ "$code" = '' ]
+		then
+			text=$(( min + RANDOM % (max - min + 2) ))
+			if [ "$text" -gt "$max" ]||[ "$text" -lt "$min" ]
+			then
+				code=-2
+				text=''
+			else code=-1
+			fi
+		fi
+		if [ "$code" = -1 ]
+		then
+			case "$text" in
+			*[^0-9]*) text=$(( min + RANDOM % (max - min + 1) ));;
+			*)
+				if [ "$text" -gt "$max" ]||[ "$text" -lt "$min" ]
+				then text=$(( min + RANDOM % (max - min + 1) ))
+				fi
+			esac
+		else text=''
+		fi
 	fi;;
+checkbox)
+	while read -rd, v
+	do
+		i=${#V[*]}
+		V[i]="$v"
+		case "$v" in
+		yes@) Y[i]=1;;
+		no@) Y[i]=0;;
+		maybe@|random@) Y[i]=$((RANDOM&1));;
+		esac
+	done <<<"$OPT_V"
+	if [[ "$text" = [*] ]]
+	then
+		t="${text#[}"
+		t="${t%]}"
+		while read -rd, v
+		do [[ "$v" =~ [^0-9] ]]||Y[v]=1
+		done
+	fi
+	text=''
+	for ((i=0;i<${#V[*]};i++))
+	do
+		if [ 1 = "${Y[i]}" ]
+		then
+			if [ -z "$text" ]
+			then text="[$i"
+			else text+=", $i"
+			fi
+			[ -z "$values" ]||values+='    },
+    {
+'
+			json_quote "${V[i]}"
+			printf -v values '%s
+      "index": %i,
+      "text": "%s"
+' "$values" "$i" "$Q"
+		fi
+	done
+	text+=']'
+	index='';;
+radio|sheet|spinner)
+	while read -rd, v
+	do
+		i=${#V[*]}
+		V[i]="$v"
+		case "$look" in
+		text) [ "$text" = "$v" ]&&index="$i";;
+		index) [ "$index" = "$i" ]&&text="$v";;
+		'')
+			case "$v" in
+			yes@|pick@)
+				index="$i"
+				text="$v"
+				look=found
+			#no@ ignored currently
+			esac
+		esac
+	done <<<"$OPT_V"
+	[ "$index" -lt "${V[*]}" ]||index=''
+	[ -z "$index" ]&&[ -n "$text" ]&&text=''
+	if [ "$code" = '' ]
+	then
+		if [ -z "$index" ]
+		then
+			index=$((RANDOM%(2+${#V[*]})))
+			if [ "$index" -lt "${#V[*]}" ]
+			then text="${V[index]}"
+			else
+				code=-2
+				[ $((RANDOM&1)) = 0 ]&&index=''
+			fi
+		else code=$(((RANDOM&1)-2))
+		fi
+	fi
+	if [ "$code" = -1 ]
+	then
+		[ sheet = "$WIDGET" ]&&code=0
+		# look for ",$text," in ",$OPT_V," ?
+
+	else text=''
+	fi;;
+text|speech)
+	if [ "$code" = -2 ]
+	then text=''
+	# igonore -p, detect -m or -n [only used in text]
+	elif [ -n "$ARG_N" ]
+	then
+		if [ -z "$text" ]||[[ "$text" =~ [^0-9] ]]
+		then
+			if [ $((RANDOM%50)) = 0 ]
+			then
+				code=-2
+				text=''
+			else printf -v text '%i.%09i' $((RANDOM*32768+RANDOM)) $(((RANDOM*32768+RANDOM)%1000000000))
+			fi
+		fi
+	elif [ -z "$text" ]
+	then
+		if [ -z "$index" ]
+		then c=$RANDOM
+		else c="$index";index=''
+		fi
+		if [ "$c" -gt 32000 ]
+		then code=-2
+		else
+			beginnings=(the com con re pro de un inter)
+			middles=(ma na ra la ti ven fer port)
+			endings=(ing er ed ly tion ment ness able)
+
+			lorem=(lorem ipsum)
+			loremlen=${#lorem[@]}
+
+			subject=(we he she they you I it)
+			subjectlen=${#subject[@]}
+			adverb=(lazily)
+			# verb conjugates, prepositions if 
+			verb=(move ignore insult poke inspect watch imagine attack see bring)
+			verblen=${#verb[@]}
+			intransitive=(dance jump went fly stare move)
+			intransitivelen=${#intransitive[@]}
+			preposition=(with over around at by near toward behind under above below 'in front of')
+			prepositionlen=${#preposition[@]}
+			object=(them you me it)
+			objectlen=${#object[@]}
+			adj=(quick slow large careful fearful beautiful impactful dark bright)
+			adjective=("${adj[@]}" lazy brown white black red green blue yellow orange purple small)
+			adjectivelen=${#adjective[@]}
+			noun=(book table car goat horse cow chicken pig elephant oyster clam turkey fox cat dog gerbil yeti)
+			nounlen=${#noun[@]}
+			for w in "${adj[@]}"
+			do adverb[${#adverb[@]}]="${w}ly"
+			done
+			adverblen=${#adverb[@]}
+			genoun(){
+				local c=$((RANDOM%4))
+				if [ 0 != "$c" ]&&[ $((RANDOM&2)) = 0 ]
+				then W='very '
+				else W=''
+				fi
+				for ((i=0;i<c;i++))
+				do W+="${adjective[RANDOM % adjectivelen]} "
+				done
+				W+="${noun[RANDOM%nounlen]}"
+				case "$((RANDOM&1))${W:0:1}" in
+				0[aeiou]) W="an $W";;
+				0*) W="a $W";;
+				*) W="the $W"
+				esac
+			}
+
+t=\$\'\"\`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+			[ -n "$ARG_M" ]&&t="$t
+"
+t="?;:-!¿¡@#%&*()[]{}<>《》¤▪︎☆♧◇♡♤■□●○•°₩¥£€|~_/=÷×+^.,öøōőœ$t"
+t="ⁿ¹²³⁴⁵⁶⁷⁸⁹⁰⅞⅚⅝⅘¾⅗⅜⅔⅖½⅓¼⅕⅙⅛ýþťțţŕřèéêëēėęěĕəùúûüūůűųìíîïīįıòóôõ$t"
+t="àáâãäåæāăąªß§śšşďđģğķĺļľłñńņňçćčźżž$t"
+t="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇😊😉🙃🙂😂🤣😅😆😁😄😃😀🏁$t"
+			tlen=${#t}
+
+			if [ speech = "$WIDGET" ]
+			then m=11
+			else m=12
+			fi
+			while [ ${#text} -lt "$c" ]
+			do
+				case $((RANDOM%m)) in
+				0)
+					w=${beginnings[RANDOM % ${#beginnings[@]}]}
+					(( RANDOM % 2 )) && w+=${middles[RANDOM % ${#middles[@]}]}
+					(( RANDOM % 2 )) && w+=${endings[RANDOM % ${#endings[@]}]}
+					;;
+				1) # TODO speech min, mult newline
+					case $((RANDOM%9)) in
+					0|1|2) w=and;;
+					3|4) w=but;;
+					5) w=or;;
+					6) w='while';;
+					7) w='if';;
+					8) w='then';;
+					esac;;
+				2)
+					case $((RANDOM%3)) in
+					0) w="${subject[RANDOM%subjectlen]}";;
+					*)
+						genoun
+						w="$W"
+					esac
+					if [ 0 = $((RANDOM%3)) ]
+					then
+						w+=' and'
+						case $((RANDOM%3)) in
+						0) w="${subject[RANDOM%subjectlen]}";;
+						*)
+							genoun
+							w="$W"
+						esac
+						if [ 0 = $((RANDOM%3)) ]
+						then
+							w+=' but not'
+							case $((RANDOM%3)) in
+							0) w="${subject[RANDOM%subjectlen]}";;
+							*)
+								genoun
+								w="$W"
+							esac
+						fi
+					fi
+					case $((RANDOM%3)) in
+					0) av='';;
+					1) av=" ${adverb[RANDOM % adverblen]}";;
+					2) av=" very ${adverb[RANDOM % adverblen]}";;
+					esac
+					if [ $((RANDOM&1)) = 0 ]
+					then
+						v="${verb[RANDOM % verblen]}"
+						prep=''
+					else
+						v="${intransitive[RANDOM %intransitivelen]}"
+						prep=" ${preposition[RANDOM%prepositionlen]}"
+					fi
+					past="${v%e}ed"
+					present="${v%e}es"
+					ing="${v%e}ing"
+					case "$v" in
+					see)
+						past=saw
+						ing=seeing;;
+					bring) past=brought;;
+					esac
+					case $((RANDOM%6)) in
+					0) w+="$av $past$prep";;
+					1) w+="$av $present$prep";;
+					2) w+=" will$av $v$prep";;
+					3) w+=" is$av $ing$prep";;
+					4) w+=" will have been$av $ing$prep";;
+					5) w+=" will have$av $past$prep";;
+					esac
+					case $((RANDOM%3)) in
+					0) w+=" ${object[RANDOM % objectlen]}";;
+					*)
+						genoun
+						w+=" $W"
+					esac
+					if [ 0 = $((RANDOM%3)) ]
+					then
+						w+=' and'
+						case $((RANDOM%3)) in
+						0) w+=" ${object[RANDOM % objectlen]}";;
+						*)
+							genoun
+							w+=" $W"
+						esac
+						if [ 0 = $((RANDOM%3)) ]
+						then
+							w+=' but not'
+							case $((RANDOM%3)) in
+							0) w+=" ${object[RANDOM % objectlen]}";;
+							*)
+								genoun
+								w+=" $W"
+							esac
+						fi
+					fi
+					[ speech = "$WIDGET" ]||[ $((RANDOM&1)) = 0 ]||w+=.
+					# TODO newline if mult?
+					;;
+				3) w="${subject[RANDOM%subjectlen]}";;
+				4)
+					case $((RANDOM%6)) in
+					0) w=an;;
+					1|2) w=a;;
+					*) w=the;;
+					esac;;
+				5) w="${adjective[RANDOM % adjectivelen]}";;
+				6) w="${noun[RANDOM%nounlen]}";;
+				7) w="${adverb[RANDOM % adverblen]}";;
+				8) w="${verb[RANDOM % verblen]}";;
+				9) w="${object[RANDOM % objectlen]}";;
+				10) w="${lorem[RANDOM%loremlen]}";;
+				11)
+					wl=$((RANDOM%6+RANDOM%6))
+					w=''
+					while [ ${#w} -lt $wl ]
+					do w+="${t:RANDOM%tlen:RANDOM%3+1}"
+					done;;
+				esac
+				text+="$w "
+			done
+			[ $((RANDOM%4)) = 0 ]||text="${text% }"
+			code=-1
+		fi
+	fi;;
+time)
+	if [ "$code" = '' ]
+	then
+		t=$((RANDOM%1500))
+		if [ "$t" -gt 1439 ]
+		then code=-2
+		else
+			code=-1
+			printf -v text %02i:%02i "$((t/60))" "$((t%60))"
+		fi
+	fi
+	if [ "$code" = -1 ]
+	then
+		case "$text" in
+		[01][0-9]:[0-5][0-9]|2[0-3]:[0-5][0-9]) :;;
+		*) printf -v text %02i:%02i "$((RANDOM%24))" "$((RANDOM%60))"
+		esac
+	else text=''
+	fi
+	index=0;;
+#date) TODO now+what? ;;
 *)
 ARG_W="--es input_method"
 
@@ -308,24 +687,28 @@ echo "d  $ARG_D $OPT_D"
 printf %s\\n "$*"
 esac
 
-# better to use jq or python or something but this avoids dependencies for now
-json_quote_sed() {
-    sed \
-            -e 's/\\/\\\\/g' \
-            -e 's/"/\\"/g' \
-            -e 's/	/\\t/g' |
-    sed ':a;N;$!ba;s/\n/\\n/g'
-}
-
+json_quote "$text"
 
 printf '{
- code: %i,
- text: "%s"' "$code" "$(json_quote_sed <<<"$text")"
+  "code": %i,
+  "text": "%s"' "$code" "$Q"
 [ '' = "$index" ]||printf ',
- index: %i' "$index"
-# items
-[ '' = "$error" ]||printf ',
-error: "%s"' "$(json_quote_sed <<<"$error")"
-[ 0 = "$incomp" ]||printf '
+  "index": %i' "$index"
+if [ -n "$values" ]
+then
+	printf ',
+  "values": [
+    {
+%s
+    }
+  ]' "$values"
+fi
+if [ -n "$error" ]
+then
+	json_quote "$error"
+	printf ',
+  "error": "%s"' "$Q"
+fi
+[ -n "$incomp" ]||printf '
 }
 '

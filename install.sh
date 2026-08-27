@@ -116,7 +116,7 @@ do
 
 	# Determine the shell from the source script's existing shebang.
 	shebang=
-	first_line=$(sed -n '1p' "$src")
+	first_line=$(sed Nq "$src")
 
 	case "$first_line" in
 		*bash*) shebang=$bash_shebang ;;
@@ -131,7 +131,7 @@ do
 			sed '1d' "$src"
 		)||exit 1
 
-		printf %s "$tmp" > "$dest"
+		printf %s "$tmp" > "$dest"||exit 1
 	else
 		cp "$src" "$dest" || exit 1
 	fi
