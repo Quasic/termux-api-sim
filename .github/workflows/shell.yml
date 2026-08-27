@@ -15,11 +15,11 @@ jobs:
     - uses: actions/checkout@main
 
     - name: bash -n
-      run: for f in scripts/*.sh;do bash -n "$f"||break;done
+      run: for f in ./*.sh scripts/*.sh;do bash -n "$f"||break;done
 
     - name: Install shellcheck
       run: sudo apt-get update&&sudo apt-get install -y shellcheck
 
     - name: Run shellcheck
-      run: shellcheck scripts/*.sh
+      run: shellcheck ./*.sh scripts/*.sh
 
