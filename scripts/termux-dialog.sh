@@ -457,7 +457,7 @@ text|speech)
 	then
 		if [ -z "$index" ]
 		then c=$RANDOM
-		else c="$index";index=''
+		else c="$index"
 		fi
 		if [ "$c" -gt 32000 ]
 		then code=-2
@@ -508,17 +508,15 @@ text|speech)
 			}
 
 t=\$\'\"\`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
-			[ -n "$ARG_M" ]&&t="$t
-"
-t="?;:-!¿¡@#%&*()[]{}<>《》¤▪︎☆♧◇♡♤■□●○•°₩¥£€|~_/=÷×+^.,öøōőœ$t"
-t="ⁿ¹²³⁴⁵⁶⁷⁸⁹⁰⅞⅚⅝⅘¾⅗⅜⅔⅖½⅓¼⅕⅙⅛ýþťțţŕřèéêëēėęěĕəùúûüūůűųìíîïīįıòóôõ$t"
-t="àáâãäåæāăąªß§śšşďđģğķĺļľłñńņňçćčźżž$t"
-t="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇😊😉🙃🙂😂🤣😅😆😁😄😃😀🏁$t"
+t+="?;:-!¿¡@#%&*()[]{}<>《》¤▪︎☆♧◇♡♤■□●○•°₩¥£€|~_/=÷×+^.,öøōőœ"
+t+="ⁿ¹²³⁴⁵⁶⁷⁸⁹⁰⅞⅚⅝⅘¾⅗⅜⅔⅖½⅓¼⅕⅙⅛ýþťțţŕřèéêëēėęěĕəùúûüūůűųìíîïīįıòóôõ"
+t+="àáâãäåæāăąªß§śšşďđģğķĺļľłñńņňçćčźżž"
+t+="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇😊😉🙃🙂😂🤣😅😆😁😄😃😀🏁"
 			tlen=${#t}
 
 			if [ speech = "$WIDGET" ]
-			then m=11
-			else m=12
+			then m=13
+			else m=14
 			fi
 			while [ ${#text} -lt "$c" ]
 			do
@@ -621,7 +619,6 @@ t="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇�
 						fi
 					fi
 					[ speech = "$WIDGET" ]||[ $((RANDOM&1)) = 0 ]||w+=.
-					# TODO newline if mult?
 					;;
 				3) w="${subject[RANDOM%subjectlen]}";;
 				4)
@@ -634,21 +631,28 @@ t="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇�
 				6) w="${noun[RANDOM%nounlen]}";;
 				7) w="${adverb[RANDOM % adverblen]}";;
 				8) w="${verb[RANDOM % verblen]}";;
-				9) w="${object[RANDOM % objectlen]}";;
-				10) w="${lorem[RANDOM%loremlen]}";;
-				11)
+				9) w="${intransitive[RANDOM %intransitivelen]}";;
+				10) w="${preposition[RANDOM %prepositionlen]}";;
+				11) w="${object[RANDOM % objectlen]}";;
+				12) w="${lorem[RANDOM%loremlen]}";;
+				13)
 					wl=$((RANDOM%6+RANDOM%6))
 					w=''
 					while [ ${#w} -lt $wl ]
 					do w+="${t:RANDOM%tlen:RANDOM%3+1}"
 					done;;
 				esac
-				text+="$w "
+				if [ -n "$ARG_M" ]&&[ $((RANDOM%10)) = 0 ]
+				then text+="$w
+"
+				else text+="$w "
+				fi
 			done
 			[ $((RANDOM%4)) = 0 ]||text="${text% }"
 			code=-1
 		fi
-	fi;;
+	fi
+	index='';;
 time)
 	if [ "$code" = '' ]
 	then

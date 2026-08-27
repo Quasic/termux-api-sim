@@ -3,13 +3,13 @@ set -e -u
 
 SCRIPTNAME=termux-toast
 
-for toastfile in "$TERMUX_TOASTFILE" "$TERMUX_SIM_DIR/termux.toast" /dev/shm/termux.toast /tmp/termux.toast ~/termux.toast
+for toastfile in "${TERMUX_TOASTFILE:-}" "${TERMUX_SIM_DIR:-}/termux.toast" /dev/shm/termux.toast /tmp/termux.toast ~/termux.toast
 do [ -n "$toastfile" ]&&touch "$toastfile" 2>/dev/null&&break
 done
 
 show_usage () {
 	echo "Usage: termux-toast [-b bgcolor] [-c color] [-g gravity] [-s] [text]"
-	echo "Show text in a Toast (a transient popup)."
+	echo "Simulate showing text in a Toast (a transient popup)."
 	echo "The toast text is either supplied as arguments or read from stdin"
 	echo "if no arguments are given. Arguments will take precedence over stdin."
 	echo "If toast text is not passed as arguments or with stdin, then there will"

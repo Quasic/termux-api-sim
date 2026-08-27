@@ -3,7 +3,7 @@ set -e -u
 
 SCRIPTNAME=termux-torch
 
-for torchfile in "$TERMUX_TOASTFILE" "$TERMUX_SIM_DIR/termux.toast" /dev/shm/termux.toast /tmp/termux.toast ~/termux.toast
+for torchfile in "${TERMUX_TORCHFILE:-}" "${TERMUX_SIM_DIR:-}/termux.toast" /dev/shm/termux.toast /tmp/termux.toast ~/termux.toast
 do [ -n "$torchfile" ]&&touch "$torchfile" 2>/dev/null&&break
 done
 
