@@ -60,7 +60,7 @@ cmd="$1"
 shift
 case "$cmd" in
 -h|--help) usage;;
-termux-*) :;;
+termux-*) cmd="${cmd%.sh}";;
 *) cmd="termux-$cmd"
 esac
 
