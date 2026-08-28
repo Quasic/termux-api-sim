@@ -10,7 +10,7 @@ done
 if command -v shellcheck
 then shellcheck ./*.sh scripts/*.sh||fail shellcheck
 fi
-for f in scripts/*.sh
+dpkg-query -L termux-api >/dev/null && for f in scripts/*.sh
 do bash cmpui.sh "${f#*/}" -h||fail "cmpui $f"
 done
 [ 0 = "$r" ]&&printf 'Pass All\n'
