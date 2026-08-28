@@ -680,7 +680,40 @@ time)
 	else text=''
 	fi
 	index=0;;
-#date) TODO now+what? ;;
+date)
+	if [ "$code" = '' ]
+	then
+		# Randomly simulate either cancellation or a date within ±10 years.
+		if [ $((RANDOM % 50)) = 0 ]
+		then
+			code=-2
+			text=''
+		else
+			now=$(date +%s)
+			offset=$(( (RANDOM * 32768 + RANDOM) % 631139040 ))
+			[ $((RANDOM & 1)) = 0 ] && offset=$((offset * -1))
+
+			if ! text=$(date -d "@$((now + offset))" '+%a %b %d 00:00:00 %Z %Y')
+			then
+				code=-2
+				text=''
+			else
+				code=-1
+			fi
+		fi
+	elif [ "$code" = -1 ]
+	then
+		# Validate and normalize a simulated date selection.
+		if ! text=$(date -d "$text" '+%a %b %d 00:00:00 %Z %Y')
+		then
+			code=-2
+			text=''
+		fi
+	else
+		code=-2
+		text=''
+	fi
+	index='';;
 *)
 ARG_W="--es input_method"
 
