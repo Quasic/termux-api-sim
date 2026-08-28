@@ -526,14 +526,21 @@ t+="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 					(( RANDOM % 2 )) && w+=${middles[RANDOM % ${#middles[@]}]}
 					(( RANDOM % 2 )) && w+=${endings[RANDOM % ${#endings[@]}]}
 					;;
-				1) # TODO speech min, mult newline
-					case $((RANDOM%9)) in
+				1)
+					if [ speech = "$WIDGET" ]
+					then C=9
+					else C=12
+					fi
+					case "$((RANDOM%C))" in
 					0|1|2) w=and;;
 					3|4) w=but;;
 					5) w=or;;
 					6) w='while';;
 					7) w='if';;
 					8) w='then';;
+					9) w=':';;
+					10) w=';';;
+					11) w=',';;
 					esac;;
 				2)
 					case $((RANDOM%3)) in
