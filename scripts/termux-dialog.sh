@@ -546,19 +546,19 @@ t+="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 					then
 						w+=' and'
 						case $((RANDOM%3)) in
-						0) w="${subject[RANDOM%subjectlen]}";;
+						0) w+=" ${subject[RANDOM%subjectlen]}";;
 						*)
 							genoun
-							w="$W"
+							w+=" $W"
 						esac
 						if [ 0 = $((RANDOM%3)) ]
 						then
 							w+=' but not'
 							case $((RANDOM%3)) in
-							0) w="${subject[RANDOM%subjectlen]}";;
+							0) w+=" ${subject[RANDOM%subjectlen]}";;
 							*)
 								genoun
-								w="$W"
+								w+=" $W"
 							esac
 						fi
 					fi
