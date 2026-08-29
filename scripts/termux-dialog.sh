@@ -290,7 +290,7 @@ trysimread(){
 	esac
 	return 1
 }
-trysimread "${TERMUX_DIALOG_SIM:-}"||trysimread "$OPT_T"||trysimread "$OPT_I"
+trysimread "${TERMUX_DIALOG_SIM:-}"||trysimread "$OPT_T"||trysimread "$OPT_I"||: rnd
 
 # better to use jq or python or something but this avoids dependencies for now
 json_quote() {
@@ -455,36 +455,39 @@ text|speech)
 		fi
 	elif [ -z "$text" ]
 	then
-		if [ -z "$index" ]
-		then c=$RANDOM
-		else c="$index"
+		if [ -n "$index" ]
+		then c="$index"
+		elif [ "$WIDGET" = speech ]
+		then c=$((RANDOM%12345))
+		elif [ -n "$ARG_M" ]
+		then c=$((RANDOM%123456))
+		else c=$((RANDOM%1234))
 		fi
 		if [ "$c" -gt 32000 ]
 		then code=-2
 		else
 			beginnings=(the com con re pro de un inter)
 			middles=(ma na ra la ti ven fer port)
-			endings=(ing er ed ly tion ment ness able)
+			endings=(ing er ed ly tion ment ness able s)
 
-			lorem=(lorem ipsum)
+			lorem=(lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat Duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum)
 			loremlen=${#lorem[@]}
 
 			subject=(we he she they you I it)
 			subjectlen=${#subject[@]}
-			adverb=(lazily)
-			# verb conjugates, prepositions if 
+			adverb=(lazily happily angrily busily heavily easily gently simply terribly)
 			verb=(move ignore insult poke inspect watch imagine attack see bring)
 			verblen=${#verb[@]}
-			intransitive=(dance jump went fly stare move)
+			intransitive=(dance jump go fly stare move)
 			intransitivelen=${#intransitive[@]}
-			preposition=(with over around at by near toward behind under above below 'in front of')
+			preposition=(with over around at by near toward behind under above below 'in front of' in on for from to about across after against along among before beneath beside between beyond during except into of off through until upon within without)
 			prepositionlen=${#preposition[@]}
-			object=(them you me it)
+			object=(them you me it him her us)
 			objectlen=${#object[@]}
-			adj=(quick slow large careful fearful beautiful impactful dark bright)
-			adjective=("${adj[@]}" lazy brown white black red green blue yellow orange purple small)
+			adj=(quick slow large careful fearful beautiful impactful dark bright brisk careless quiet loud polite rude beautiful clear correct different final fortunate honest patient perfect recent serious sudden usual) 
+			adjective=("${adj[@]}" lazy happy angry busy heavy brown white black red green blue yellow orange purple small silly lively lonely friendly lovely gentle simple terrible tiny giant)
 			adjectivelen=${#adjective[@]}
-			noun=(book table car goat horse cow chicken pig elephant oyster clam turkey fox cat dog gerbil yeti)
+			noun=(book table car goat horse cow chicken pig elephant oyster clam turkey fox cat dog gerbil yeti newt person plant amoeba worm eggplant turtle giraffe)
 			nounlen=${#noun[@]}
 			for w in "${adj[@]}"
 			do adverb[${#adverb[@]}]="${w}ly"
@@ -500,18 +503,21 @@ text|speech)
 				do W+="${adjective[RANDOM % adjectivelen]} "
 				done
 				W+="${noun[RANDOM%nounlen]}"
-				case "$((RANDOM&1))${W:0:1}" in
+				case "$((RANDOM%5))${W:0:1}" in
 				0[aeiou]) W="an $W";;
 				0*) W="a $W";;
+				1*) W="one $W";;
+				2*) W+=s;;
+				3*) W="$((RANDOM&127+2)) ${W}s";;
 				*) W="the $W"
 				esac
 			}
 
-t=\$\'\"\`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
-t+="?;:-!¿¡@#%&*()[]{}<>《》¤▪︎☆♧◇♡♤■□●○•°₩¥£€|~_/=÷×+^.,öøōőœ"
-t+="ⁿ¹²³⁴⁵⁶⁷⁸⁹⁰⅞⅚⅝⅘¾⅗⅜⅔⅖½⅓¼⅕⅙⅛ýþťțţŕřèéêëēėęěĕəùúûüūůűųìíîïīįıòóôõ"
-t+="àáâãäåæāăąªß§śšşďđģğķĺļľłñńņňçćčźżž"
-t+="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇😊😉🙃🙂😂🤣😅😆😁😄😃😀🏁"
+t=\$\'\"\`\\0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+t+='?;:-!¿¡@#%&*()[]{}<>《》¤▪︎☆♧◇♡♤■□●○•°₩¥£€|~_/=÷×+^.,öøōőœ'
+t+='ⁿ¹²³⁴⁵⁶⁷⁸⁹⁰⅞⅚⅝⅘¾⅗⅜⅔⅖½⅓¼⅕⅙⅛ýþťțţŕřèéêëēėęěĕəùúûüūůűųìíîïīįıòóôõ'
+t+='àáâãäåæāăąªß§śšşďđģğķĺļľłñńņňçćčźżž'
+t+='🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇😊😉🙃🙂😂🤣😅😆😁😄😃😀🏁'
 			tlen=${#t}
 
 			if [ speech = "$WIDGET" ]
@@ -586,6 +592,10 @@ t+="🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 					present="${v%e}es"
 					ing="${v%e}ing"
 					case "$v" in
+					go) past=went;;
+					fly)
+						past=flew
+						present=flys;;
 					see)
 						past=saw
 						ing=seeing;;
@@ -683,14 +693,14 @@ time)
 date)
 	if [ "$code" = '' ]
 	then
-		# Randomly simulate either cancellation or a date within ±10 years.
+		# Randomly simulate either cancellation or a date within ±34 years.
 		if [ $((RANDOM % 50)) = 0 ]
 		then
 			code=-2
 			text=''
 		else
 			now=$(date +%s)
-			offset=$(( (RANDOM * 32768 + RANDOM) % 631139040 ))
+			offset=$((RANDOM * 32768 + RANDOM))
 			[ $((RANDOM & 1)) = 0 ] && offset=$((offset * -1))
 
 			if ! text=$(date -d "@$((now + offset))" '+%a %b %d 00:00:00 %Z %Y')
