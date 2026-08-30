@@ -1,5 +1,11 @@
 #!/bin/dash
 cd -- "$(dirname -- "$0")" || exit 1
+
+for f in "${TERMUX_CLIPFILE:-}" "${TERMUX_SIM_DIR:-}/termux.clip" /dev/shm/termux.clip /tmp/termux.clip "$HOME/termux.clip"
+do [ -f "$f" ]&&printf 'Removing %s for tests...\n' "$f"&&rm "$f"&&[ -z "$clipfile" ]&&clipfile="$f"
+done
+printf 'Clipfile: %s\n' "$clipfile"
+
 r=0
 fail(){
 	printf ^^^^^^^^^^^^^%s^^^^^^^^^^^^\\n "$1"
@@ -9,7 +15,7 @@ $l"
 }
 run(){
 	printf %s\\n "$*" >&2
-	"$@" </dev/null||fail "$* exit code $?"
+	printf 'dummy text\n'|"$@"||fail "$* exit code $?"
 }
 chk(){
 	local cmd="$1"
@@ -91,9 +97,15 @@ do
 		chk "$cmd $f spinner -v random@" "$y" "$n" "$ni"
 		run "$cmd" "$f";;
 	*-torch.sh) run "$cmd" "$f" off;;
+	*-clipboard-set.sh)
+		run "$cmd" "$f"
+		# run get after
+		run "$cmd" "scripts/termux-clipboatd-get.sh";; 
 	*) run "$cmd" "$f"
 	esac
 done
+printf 'Clipfile contents:\n'
+cat <"$clipfile"
 if [ 0 = "$r" ]
 then printf 'Pass All\n'
 else printf 'Failures:\n%s' "$l"
