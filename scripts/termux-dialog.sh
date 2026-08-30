@@ -292,6 +292,13 @@ trysimread(){
 }
 trysimread "${TERMUX_DIALOG_SIM:-}"||trysimread "$OPT_T"||trysimread "$OPT_I"||: rnd
 
+getnum(){
+	NUM=$((RANDOM&7))
+	while ((RANDOM&7<5))&&((NUM<32000))
+	do ((NUM+=(RANDOM&3)+1))
+	done
+}
+
 # better to use jq or python or something but this avoids dependencies for now
 json_quote() {
 	Q="${1//\\/\\\\}"
@@ -354,10 +361,14 @@ counter)
 				then text=$(( min + RANDOM % (max - min + 1) ))
 				fi
 			esac
-		else text=''
+		else
+			code=-2
+			text=''
 		fi
 	fi;;
 checkbox)
+	V=()
+	Y=()
 	while read -rd, v
 	do
 		i=${#V[*]}
@@ -366,8 +377,9 @@ checkbox)
 		yes@) Y[i]=1;;
 		no@) Y[i]=0;;
 		maybe@|random@) Y[i]=$((RANDOM&1));;
+		'') [ -z "$code" ]&&Y[i]=$((RANDOM&3));;
 		esac
-	done <<<"$OPT_V"
+	done <<<"$OPT_V,"
 	if [[ "$text" = [*] ]]
 	then
 		t="${text#[}"
@@ -379,25 +391,30 @@ checkbox)
 	text=''
 	for ((i=0;i<${#V[*]};i++))
 	do
-		if [ 1 = "${Y[i]}" ]
+		if [ 1 = "${Y[i]:-}" ]
 		then
+			json_quote "${V[i]}"
 			if [ -z "$text" ]
-			then text="[$i"
-			else text+=", $i"
+			then text="[$Q"
+			else text+=", $Q"
 			fi
 			[ -z "$values" ]||values+='    },
     {
 '
-			json_quote "${V[i]}"
-			printf -v values '%s
-      "index": %i,
+			printf -v values '%s      "index": %i,
       "text": "%s"
 ' "$values" "$i" "$Q"
 		fi
 	done
-	text+=']'
+	if [ -n "$text" ]
+	then
+		code=-1
+		text+=']'
+	else code=-2
+	fi
 	index='';;
 radio|sheet|spinner)
+	V=()
 	while read -rd, v
 	do
 		i=${#V[*]}
@@ -408,14 +425,25 @@ radio|sheet|spinner)
 		'')
 			case "$v" in
 			yes@|pick@)
+				code=-1
 				index="$i"
 				text="$v"
 				look=found
-			#no@ ignored currently
+				break;;
+			maybe@|random@)
+				if ((RANDOM&1==0))
+				then
+					code=-1
+					index="$i"
+					text="$v"
+					look=found
+					break
+				fi;;
+			#no@ handled later
 			esac
 		esac
-	done <<<"$OPT_V"
-	[ "$index" -lt "${V[*]}" ]||index=''
+	done <<<"$OPT_V,"
+	[ -z "$index" ]||[ "$index" -lt "${V[*]}" ]||index=''
 	[ -z "$index" ]&&[ -n "$text" ]&&text=''
 	if [ "$code" = '' ]
 	then
@@ -423,20 +451,31 @@ radio|sheet|spinner)
 		then
 			index=$((RANDOM%(2+${#V[*]})))
 			if [ "$index" -lt "${#V[*]}" ]
-			then text="${V[index]}"
+			then
+				text="${V[index]}"
+				if [ no@ = "$text" ]
+				then
+					code=-2
+					text=''
+					# leave index
+				else code=-1
+				fi
 			else
 				code=-2
-				[ $((RANDOM&1)) = 0 ]&&index=''
+				index=''
 			fi
-		else code=$(((RANDOM&1)-2))
+		else code=$(((RANDOM&3)-2))
 		fi
 	fi
-	if [ "$code" = -1 ]
-	then
-		[ sheet = "$WIDGET" ]&&code=0
+	if [ "$code" = -2 ]
+	then text=''
+	else
+		if [ sheet = "$WIDGET" ]
+		then code=0
+		else code=-1
+		fi
 		# look for ",$text," in ",$OPT_V," ?
 
-	else text=''
 	fi;;
 text|speech)
 	if [ "$code" = -2 ]
@@ -450,7 +489,24 @@ text|speech)
 			then
 				code=-2
 				text=''
-			else printf -v text '%i.%09i' $((RANDOM*32768+RANDOM)) $(((RANDOM*32768+RANDOM)%1000000000))
+			else
+				getnum
+				b=$NUM
+				getnum
+
+				t=''
+				while ((${#t}<b+NUM))
+				do printf -v t %s%09i "$t" $(((RANDOM*32768+RANDOM)%1000000000))
+				# 9 digits from 2 randoms is better ratio than 4 from 1 or 13 from 3
+				done
+
+				case $((RANDOM&3)) in
+				0) text="${t:0:NUM}";;
+				1) text="${t:0:b}.${t:b:NUM}";;
+				2) text="-${t:0:NUM}";;
+				3) text="-${t:0:b}.${t:b:NUM}";;
+				esac
+				code=-1
 			fi
 		fi
 	elif [ -z "$text" ]
@@ -458,57 +514,248 @@ text|speech)
 		if [ -n "$index" ]
 		then c="$index"
 		elif [ "$WIDGET" = speech ]
-		then c=$((RANDOM%12345))
+		then c=$((RANDOM&16#2fff))
+		elif [ -n "$ARG_P" ]
+		then c=$((8+(RANDOM&31)))
 		elif [ -n "$ARG_M" ]
-		then c=$((RANDOM%123456))
-		else c=$((RANDOM%1234))
+		then c=$((RANDOM&16#ffff))
+		else c=$((RANDOM&16#3ff))
 		fi
-		if [ "$c" -gt 32000 ]
+		if [ 0 = $((RANDOM&63)) ]
 		then code=-2
 		else
 			beginnings=(the com con re pro de un inter)
 			middles=(ma na ra la ti ven fer port)
 			endings=(ing er ed ly tion ment ness able s)
 
-			lorem=(lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat Duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum)
+			lorem=(lorem ipsum dolor sit amet consectetur adipiscing elit sed 'do' eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat Duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum)
 			loremlen=${#lorem[@]}
 
-			subject=(we he she they you I it)
+			subject=(we he she they you I it both one)
 			subjectlen=${#subject[@]}
+			gensubjPLURAL(){
+				W="${subject[RANDOM%subjectlen]}"
+				case "$W" in
+				he|she|it|one) :;;
+				*) PLURAL=1
+				esac
+			}
 			adverb=(lazily happily angrily busily heavily easily gently simply terribly)
-			verb=(move ignore insult poke inspect watch imagine attack see bring)
-			verblen=${#verb[@]}
-			intransitive=(dance jump go fly stare move)
-			intransitivelen=${#intransitive[@]}
+			transitive=(move ignore insult poke inspect watch imagine attack see bring consult teach blame dox wiggle jostle invoke emulate yeet visit like wash help stop shun reward award recognize criticize jumble challenge view refresh love discover evaluate discuss ask respect appreciate value call report balance check narrate encourage)
+			intransitive=(dance jump go fly stare move work walk box unbox buzz play run consult teach skip agree disagree zoom sit check strut travel apologize live learn land crawl party talk)
 			preposition=(with over around at by near toward behind under above below 'in front of' in on for from to about across after against along among before beneath beside between beyond during except into of off through until upon within without)
 			prepositionlen=${#preposition[@]}
-			object=(them you me it him her us)
+			getverb(){
+				local I="${1:-}"
+				local av
+				local v
+				local prep
+				case $((RANDOM%3)) in
+				0) av='';;
+				1) av=" ${adverb[RANDOM % adverblen]}";;
+				2) av=" very ${adverb[RANDOM % adverblen]}";;
+				esac
+				if [ $((RANDOM&1)) = 0 ]
+				then
+					v="${transitive[RANDOM % ${#transitive[@]}]}"
+					prep=''
+				else
+					v="${intransitive[RANDOM %${#intransitive[@]}]}"
+					prep=" ${preposition[RANDOM%prepositionlen]}"
+				fi
+				local past="${v%e}ed"
+				local pastp="$past"
+				local ing="${v%e}ing"
+				local present
+				case "$v" in
+				*ch|*sh|*s|*x|*z) present="${v}es";;
+				*[bcdfghj-np-tv-z]y) present="${v%y}ies";;
+				*) present="${v}s"
+				esac
+				case "$v" in
+				go)
+					present=goes
+					pastp=gone
+					past=went;;
+				eat)
+					pastp=eaten
+					past=ate;;
+				fly)
+					past=flew
+					pastp=flown;;
+				run)
+					past=ran
+					pastp=run;;
+				sit)
+					past=sat
+					pastp=seated;;
+				see)
+					past=saw
+					pastp=seen
+					ing=seeing;;
+				teach) past=taught;;
+				bring) past=brought;;
+				[bcdfghj-np-tv-z][bcdfghj-np-tv-z][bcdfghj-np-tv-z][aeiou][bcdfghj-np-tvz]|[bcdfghj-np-tv-z][bcdfghj-np-tv-z][aeiou][bcdfghj-np-tvz]|[bcdfghj-np-tv-z][aeiou][bcdfghj-np-tvz])
+					past="$v${v:${#v}-1}ed"
+					ing="$v${v:${#v}-1}ing";;
+				esac
+				case $((RANDOM%18)) in
+				0) VERB="$av $past$prep";;
+				1)
+					if [ -z "$PLURAL" ]
+					then VERB="$av $present$prep"
+					else VERB="$av $v$prep"
+					fi;;
+				2) VERB=" will$av $v$prep";;
+				3)
+					if [ I = "$I" ]
+					then VERB=" am$av $ing$prep"
+					elif [ -n "$PLURAL" ]
+					then VERB=" are$av $ing$prep"
+					else VERB=" is$av $ing$prep"
+					fi;;
+				4) VERB=" will have been$av $ing$prep";;
+				5) VERB=" will have$av $pastp$prep";;
+				6) VERB=" will be$av $ing$prep";;
+				7) VERB=" did$av $v$prep";;
+				8)
+					if [ -n "$PLURAL" ]
+					then VERB=" do$av $v$prep"
+					else VERB=" does$av $v$prep"
+					fi;;
+				9)
+					if [ -n "$PLURAL" ]
+					then VERB=" were$av $ing$prep"
+					else VERB=" was$av $ing$prep"
+					fi;;
+				10) VERB="$av will $v$prep";; #metaphore n/a
+				11)
+					if ((RANDOM&127==0))
+					then ing='' #metaphore
+					else ing=" $ing$prep"
+					fi
+					if [ I = "$I" ]
+					then VERB="$av am$ing"
+					elif [ -n "$PLURAL" ]
+					then VERB="$av are$ing"
+					else VERB="$av is$ing"
+					fi;;
+				12)
+					if ((RANDOM&127==0))
+					then ing='' #metaphore
+					else ing=" $ing$prep"
+					fi
+					VERB="$av will have been$ing";;
+				13) VERB="$av will have $pastp$prep";; # metaphore n/a
+				14)
+					if ((RANDOM&127==0))
+					then ing='' #metaphore
+					else ing=" $ing$prep"
+					fi
+					VERB="$av will be$ing";;
+				15) VERB="$av did $v$prep";;
+				16) # metaphore n/a
+					if [ -n "$PLURAL" ]
+					then VERB="$av do $v$prep"
+					else VERB="$av does $v$prep"
+					fi;;
+				17)
+					if ((RANDOM&127==0))
+					then ing='' #metaphore
+					else ing=" $ing$prep"
+					fi
+					if [ -n "$PLURAL" ]
+					then VERB="$av were$ing"
+					else VERB="$av was$ing"
+					fi;;
+				esac
+			}
+
+			object=(them you me it him her us both one)
 			objectlen=${#object[@]}
-			adj=(quick slow large careful fearful beautiful impactful dark bright brisk careless quiet loud polite rude beautiful clear correct different final fortunate honest patient perfect recent serious sudden usual) 
+			adj=(quick slow large careful fearful beautiful impactful dark bright brisk careless quiet loud polite rude beautiful clear correct different final fortunate honest patient perfect recent serious sudden usual transitive intransitive proper random forceful strong colorful courageous blind deaf limp lame dumb emphatic)
 			adjective=("${adj[@]}" lazy happy angry busy heavy brown white black red green blue yellow orange purple small silly lively lonely friendly lovely gentle simple terrible tiny giant)
 			adjectivelen=${#adjective[@]}
-			noun=(book table car goat horse cow chicken pig elephant oyster clam turkey fox cat dog gerbil yeti newt person plant amoeba worm eggplant turtle giraffe)
+			noun=(book table car goat horse cow chicken pig elephant oyster clam turkey fox cat dog gerbil yeti newt person plant amoeba worm eggplant turtle giraffe bird duck penguin bear muskrat ox donkey baby lady bus bug box quiz dish class swarm bee tomato potato goose photo piano radio play day week hour minute second millisecond month year decade century olympiad millenium word verb noun adjective adverb preposition pronoun subject object farm land party grass lawn report statement evaluation account agreement rock paper scissors knife fire deer sheep aircraft series mouse)
+			for w in "${transitive[@]}" "${intransitive[@]}"
+			do
+				case "$w" in
+				*e) w="${w}r";;
+				*[^aeiou]y) w="${w%y}ier";; #space/punct. not expected to be problem only 1 char b4 end
+				[bcdfghj-np-tv-z][bcdfghj-np-tv-z][bcdfghj-np-tv-z][aeiou][bcdfghj-np-tvz]|[bcdfghj-np-tv-z][bcdfghj-np-tv-z][aeiou][bcdfghj-np-tvz]|[bcdfghj-np-tv-z][aeiou][bcdfghj-np-tvz]) w="$w${w:${#w}-1}er";;
+				go) w=partygoer;;
+				*) w="${w}er"
+				esac
+				noun[${#noun[@]}]=$w
+			done
 			nounlen=${#noun[@]}
 			for w in "${adj[@]}"
 			do adverb[${#adverb[@]}]="${w}ly"
 			done
+			adj=() #done with it
 			adverblen=${#adverb[@]}
-			genoun(){
+			genadjnoun(){
 				local c=$((RANDOM%4))
-				if [ 0 != "$c" ]&&[ $((RANDOM&2)) = 0 ]
-				then W='very '
+				local i
+				local n
+				if [ 0 != "$c" ]
+				then
+					case $((RANDOM&7)) in
+					1) W='very ';;
+					2) W="${adverb[RANDOM % adverblen]} ";;
+					3) W="very ${adverb[RANDOM % adverblen]} ";;
+					4) W="very very ${adverb[RANDOM % adverblen]} ";;
+					5) W="${adverb[RANDOM % adverblen]} very ${adverb[RANDOM % adverblen]} ";;
+					*) W=''
+					esac
 				else W=''
 				fi
 				for ((i=0;i<c;i++))
-				do W+="${adjective[RANDOM % adjectivelen]} "
+				do
+					n="${adjective[RANDOM % adjectivelen]} "
+					[[ " $W" = *" $n"* ]]||W+="$n"
 				done
 				W+="${noun[RANDOM%nounlen]}"
-				case "$((RANDOM%5))${W:0:1}" in
+			}
+			genoun(){
+				local i
+				genadjnoun
+				case "$((RANDOM%10))${W:0:1}" in
 				0[aeiou]) W="an $W";;
 				0*) W="a $W";;
 				1*) W="one $W";;
-				2*) W+=s;;
-				3*) W="$((RANDOM&127+2)) ${W}s";;
+				2*)
+					case "$W" in
+					scissors|deer|sheep|aircraft|series) :;;
+					ox) W+=en;;
+					*ch|*sh|*s|*x|*z|[tp]o[mt]ato) W+=es;;
+					*[bcdfghj-np-tv-z]y) W="${W%y}ies";;
+					goose) W=geese;;
+					mouse) W=mice;;
+					*) W+=s;
+					esac
+					((0==RANDOM&1))&&W="$(((RANDOM&127)+2)) $W"
+					PLURAL="${1:-}";;
+				3*) W="her $W";;
+				4*) W="his $W";;
+				5*) W="its $W";;
+				6[aeiou])
+					i="$W"
+					genadjnoun
+					W="an $i's $W";;
+				6*)
+					i="$W"
+					genadjnoun
+					W="a $i's $W";;
+				7*)
+					i="$W"
+					genadjnoun
+					W="the $W's $i";;
+				8*)
+					i="$W"
+					genadjnoun
+					W="one $W's $i";;
+
 				*) W="the $W"
 				esac
 			}
@@ -521,8 +768,8 @@ t+='🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 			tlen=${#t}
 
 			if [ speech = "$WIDGET" ]
-			then m=13
-			else m=14
+			then m=14
+			else m=16
 			fi
 			while [ ${#text} -lt "$c" ]
 			do
@@ -535,7 +782,7 @@ t+='🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 				1)
 					if [ speech = "$WIDGET" ]
 					then C=9
-					else C=12
+					else C=14
 					fi
 					case "$((RANDOM%C))" in
 					0|1|2) w=and;;
@@ -547,68 +794,55 @@ t+='🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 					9) w=':';;
 					10) w=';';;
 					11) w=',';;
+					12) w='#';;
+					13) w=' ';;
 					esac;;
 				2)
+					PLURAL=''
 					case $((RANDOM%3)) in
-					0) w="${subject[RANDOM%subjectlen]}";;
-					*)
-						genoun
-						w="$W"
+					0) gensubjPLURAL;;
+					*) genoun PLURAL
 					esac
+					w="$W"
 					if [ 0 = $((RANDOM%3)) ]
 					then
-						w+=' and'
+						PLURAL=1
 						case $((RANDOM%3)) in
-						0) w+=" ${subject[RANDOM%subjectlen]}";;
-						*)
-							genoun
-							w+=" $W"
+						0) gensubjPLURAL;;
+						*) genoun PLURAL
 						esac
-						if [ 0 = $((RANDOM%3)) ]
-						then
+						if ((RANDOM&1==0))
+						then w+=" and $W"
+						else w="both $w and $W"
+						fi
+						case $((RANDOM%3)) in
+						0)
 							w+=' but not'
 							case $((RANDOM%3)) in
 							0) w+=" ${subject[RANDOM%subjectlen]}";;
 							*)
 								genoun
 								w+=" $W"
+							esac;;
+						2)
+							w+=' but neither'
+							case $((RANDOM%3)) in
+							0) w+=" ${subject[RANDOM%subjectlen]}";;
+							*)
+								genoun
+								w+=" $W"
 							esac
-						fi
+							w+=' nor'
+							case $((RANDOM%3)) in
+							0) w+=" ${subject[RANDOM%subjectlen]}";;
+							*)
+								genoun
+								w+=" $W"
+							esac;;
+						esac
 					fi
-					case $((RANDOM%3)) in
-					0) av='';;
-					1) av=" ${adverb[RANDOM % adverblen]}";;
-					2) av=" very ${adverb[RANDOM % adverblen]}";;
-					esac
-					if [ $((RANDOM&1)) = 0 ]
-					then
-						v="${verb[RANDOM % verblen]}"
-						prep=''
-					else
-						v="${intransitive[RANDOM %intransitivelen]}"
-						prep=" ${preposition[RANDOM%prepositionlen]}"
-					fi
-					past="${v%e}ed"
-					present="${v%e}es"
-					ing="${v%e}ing"
-					case "$v" in
-					go) past=went;;
-					fly)
-						past=flew
-						present=flys;;
-					see)
-						past=saw
-						ing=seeing;;
-					bring) past=brought;;
-					esac
-					case $((RANDOM%6)) in
-					0) w+="$av $past$prep";;
-					1) w+="$av $present$prep";;
-					2) w+=" will$av $v$prep";;
-					3) w+=" is$av $ing$prep";;
-					4) w+=" will have been$av $ing$prep";;
-					5) w+=" will have$av $past$prep";;
-					esac
+					getverb "$w"
+					w+="$VERB"
 					case $((RANDOM%3)) in
 					0) w+=" ${object[RANDOM % objectlen]}";;
 					*)
@@ -645,17 +879,35 @@ t+='🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 					*) w=the;;
 					esac;;
 				5) w="${adjective[RANDOM % adjectivelen]}";;
-				6) w="${noun[RANDOM%nounlen]}";;
+				6)
+					genoun
+					w="$W";;
 				7) w="${adverb[RANDOM % adverblen]}";;
-				8) w="${verb[RANDOM % verblen]}";;
-				9) w="${intransitive[RANDOM %intransitivelen]}";;
-				10) w="${preposition[RANDOM %prepositionlen]}";;
-				11) w="${object[RANDOM % objectlen]}";;
-				12) w="${lorem[RANDOM%loremlen]}";;
-				13)
+				8)
+					PLURAL=''
+					getverb
+					w="${VERB:1}";;
+				9)
+					PLURAL=1
+					getverb
+					w="${VERB:1}";;
+				10)
+					PLURAL=1
+					getverb I
+					w="I$VERB";;
+				11) w="${preposition[RANDOM %prepositionlen]}";;
+				12) w="${object[RANDOM % objectlen]}";;
+				13) w="${lorem[RANDOM%loremlen]}";;
+				14)
 					wl=$((RANDOM%6+RANDOM%6))
 					w=''
 					while [ ${#w} -lt $wl ]
+					do w+="${t:RANDOM%tlen:RANDOM%3+1}"
+					done;;
+				15)
+					getnum
+					w=''
+					while ((${#w}<NUM))
 					do w+="${t:RANDOM%tlen:RANDOM%3+1}"
 					done;;
 				esac
@@ -689,7 +941,7 @@ time)
 		esac
 	else text=''
 	fi
-	index=0;;
+	index='';; # real returns random index sometimes (last one sent)
 date)
 	if [ "$code" = '' ]
 	then
@@ -753,8 +1005,7 @@ then
 	printf ',
   "values": [
     {
-%s
-    }
+%s    }
   ]' "$values"
 fi
 if [ -n "$error" ]
