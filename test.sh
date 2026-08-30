@@ -2,7 +2,7 @@
 cd -- "$(dirname -- "$0")" || exit 1
 
 for f in "${TERMUX_CLIPFILE:-}" "${TERMUX_SIM_DIR:-}/termux.clip" /dev/shm/termux.clip /tmp/termux.clip "$HOME/termux.clip"
-do [ -f "$f" ]&&printf 'Removing %s for tests...\n' "$f"&&rm "$f"&&[ -z "$clipfile" ]&&clipfile="$f"
+do [ -f "$f" ]&&printf 'Removing %s for tests, contents:\n' "$f"&&cat "$f"&&rm "$f"&&[ -z "$clipfile" ]&&clipfile="$f"
 done
 printf 'Clipfile: %s\n' "$clipfile"
 
@@ -100,12 +100,12 @@ do
 	*-clipboard-set.sh)
 		run "$cmd" "$f"
 		# run get after
-		run "$cmd" "scripts/termux-clipboatd-get.sh";; 
+		run "$cmd" "scripts/termux-clipboard-get.sh";; 
 	*) run "$cmd" "$f"
 	esac
 done
 printf 'Clipfile contents:\n'
-cat <"$clipfile"
+cat "$clipfile"
 if [ 0 = "$r" ]
 then printf 'Pass All\n'
 else printf 'Failures:\n%s' "$l"
