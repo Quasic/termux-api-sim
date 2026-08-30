@@ -1,10 +1,10 @@
-#!@TERMUX_PREFIX@/bin/sh
+#!/bin/bash
 set -e -u
 
 SCRIPTNAME=termux-speech-to-text
 show_usage () {
     echo "Usage: $SCRIPTNAME"
-    echo "Converts speech to text, sending partial matches to stdout."
+    echo "Converts simulated speech to text, sending to stdout."
     exit 0
 }
 
@@ -21,9 +21,4 @@ shift $((OPTIND-1))
 
 if [ $# != 0 ]; then echo "$SCRIPTNAME: too many arguments"; exit 1; fi
 
-CMD=@TERMUX_PREFIX@/libexec/termux-api
-if [ $show_progress = true ]; then
-  $CMD SpeechToText
-else
-  $CMD SpeechToText | tail -1
-fi
+echo "This is a stub. This line is to make shellcheck happy. $show_progress"
