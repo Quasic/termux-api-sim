@@ -9,7 +9,7 @@ $l"
 }
 run(){
 	printf %s\\n "$*" >&2
-	"$@" </dev/null||fail "$*"
+	"$@" </dev/null||fail "$* exit code $?"
 }
 chk(){
 	local cmd="$1"
@@ -17,7 +17,7 @@ chk(){
 	local c
 	local s
 	printf %s\\n "$cmd"
-	s=$(eval "$cmd")||fail "$cmd"
+	s=$(eval "$cmd")||fail "$cmd exit code $?"
 	for c in "$@"
 	do [ "$c" = "$s" ]&&printf Pass\\n&&return 0
 		#printf %s\\n "$c$s"

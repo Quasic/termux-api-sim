@@ -26,4 +26,7 @@ shift $((OPTIND-1))
 
 if [ $# != 0 ]; then echo "$SCRIPTNAME: too many arguments"; exit 1; fi
 
-[ -r "$clipfile" ]&&cat "$clipfile"
+if [ -r "$clipfile" ]
+then cat "$clipfile"
+else true
+fi
