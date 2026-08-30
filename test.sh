@@ -31,9 +31,18 @@ done
 if command -v shellcheck
 then shellcheck ./*.sh scripts/*.sh||fail shellcheck
 fi
-dpkg-query -L termux-api >/dev/null && for f in scripts/*.sh
-do bash cmpui.sh "${f#*/}" -h||fail "cmpui $f"
-done
+if dpkg-query -L termux-api >/dev/null
+then
+	for f in scripts/*.sh
+	do
+		f="${f#*/}"
+		if command -v "${f%.sh}"
+		then bash cmpui.sh "$f" -h||fail "cmpui $f"
+		else fail "real $f missing on termux"
+		fi
+	done
+else printf 'Not running on termux, skipping comparison\n'
+fi
 for f in scripts/*.sh
 do
 	case "$(sed Nq "$f" 2>/dev/null)" in
