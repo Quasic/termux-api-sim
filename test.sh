@@ -1,6 +1,8 @@
 #!/bin/dash
 cd -- "$(dirname -- "$0")" || exit 1
 
+exec </dev/null
+
 for f in "${TERMUX_CLIPFILE:-}" "${TERMUX_SIM_DIR:-}/termux.clip" /dev/shm/termux.clip /tmp/termux.clip "$HOME/termux.clip"
 do [ -f "$f" ]&&printf 'Removing %s for tests, contents:\n' "$f"&&cat "$f"&&rm "$f"&&[ -z "$clipfile" ]&&clipfile="$f"
 done
@@ -15,7 +17,7 @@ $l"
 }
 run(){
 	printf %s\\n "$*" >&2
-	printf 'dummy text\n'|"$@"||fail "$* exit code $?"
+	"$@"||fail "$* exit code $?"
 }
 chk(){
 	local cmd="$1"
@@ -99,8 +101,15 @@ do
 	*-torch.sh) run "$cmd" "$f" off;;
 	*-clipboard-set.sh)
 		run "$cmd" "$f"
-		# run get after
-		run "$cmd" "scripts/termux-clipboard-get.sh";; 
+		run "$cmd" "scripts/termux-clipboard-get.sh"
+		t="testing 1,2,3..."
+		run "$cmd" "$f" "$t"
+		[ "$t" = $(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2) ]||fail "clipboard get differs from $t"
+		t="testing again 1,2, a 1 2 3 4..."
+		run "$cmd" "$f"<<EOF
+$t
+EOF
+		[ "$t" = $(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2) ]||fail "clipboard get differs from $t";;
 	*) run "$cmd" "$f"
 	esac
 done
