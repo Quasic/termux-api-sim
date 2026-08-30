@@ -104,12 +104,12 @@ do
 		run "$cmd" "scripts/termux-clipboard-get.sh"
 		t="testing 1,2,3..."
 		run "$cmd" "$f" "$t"
-		[ "$t" = $(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2) ]||fail "clipboard get differs from $t"
+		[ "$t" = "$(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2)" ]||fail "clipboard get differs from $t"
 		t="testing again 1,2, a 1 2 3 4..."
 		run "$cmd" "$f"<<EOF
 $t
 EOF
-		[ "$t" = $(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2) ]||fail "clipboard get differs from $t";;
+		[ "$t" = "$(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2)" ]||fail "clipboard get differs from $t";;
 	*) run "$cmd" "$f"
 	esac
 done
