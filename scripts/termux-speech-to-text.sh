@@ -223,7 +223,7 @@ setAdjPhrase(){
 }
 
 adNoun(){
-	local c="${1:-RANDOM&3}"
+	local c=$((RANDOM&3))
 	local i
 	for ((i=0;i<c;i++))
 	do
