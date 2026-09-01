@@ -41,7 +41,7 @@ setNamePlace(){
 setName(){
 	Name="${name_beginnings[RANDOM%${#name_beginnings[@]}]}"
 	((RANDOM&1))&&Name+="${name_middles[RANDOM%${#name_middles[@]}]}"
-	if [ -n "$1" ]
+	if [ -n "${1:-}" ]
 	then Name+="${surname_endings[RANDOM%${#surname_endings[@]}]}"
 	elif (((RANDOM&3)==0))
 	then Name+="${name_middles[RANDOM%${#name_middles[@]}]}${name_endings[RANDOM%${#name_endings[@]}]}"

@@ -4,7 +4,12 @@ cd -- "$(dirname -- "$0")" || exit 1
 exec </dev/null
 
 for f in "${TERMUX_CLIPFILE:-}" "${TERMUX_SIM_DIR:-}/termux.clip" /dev/shm/termux.clip /tmp/termux.clip "$HOME/termux.clip"
-do [ -f "$f" ]&&printf 'Removing %s for tests, contents:\n' "$f"&&cat "$f"&&rm "$f"&&[ -z "$clipfile" ]&&clipfile="$f"
+do
+	if [ -f "$f" ]
+	then printf 'Removing %s for tests, contents:\n' "$f"&&cat "$f"&&printf '' >"$f"&&[ -z "$clipfile" ]&&clipfile="$f"
+	elif [ -z "$clipfile" ]
+	then touch "$f"&&clipfile="$f"
+	fi
 done
 printf 'Clipfile: %s\n' "$clipfile"
 
@@ -101,9 +106,15 @@ do
 		chk "$cmd $f radio -v random@" "$y" "$n" "$ni"
 		chk "$cmd $f sheet -v random@" "$sh" "$n" "$ni"
 		chk "$cmd $f spinner -v random@" "$y" "$n" "$ni"
-		# test when source fails
-		if [ -d /dev/shm ]&&cp "$f" /dev/shm/termux-dialog.sh
-		then run "$cmd" /dev/shm/termux-dialog.sh
+		# test when source fail
+		for d in /dev/shm /tmp "$TEMP" "$TMP"
+		do [ -d "$d" ]&&cp "$f" "$d/termux-dialog.sh"&&break
+			d=''
+		done
+		if [ -z "$d" ]
+		then printf 'Skipping dialog unsourced stt test\n'
+		else run "$cmd" "$d/termux-dialog.sh"
+			rm "$d/termux-dialog.sh"
 		fi
 		run "$cmd" "$f";;
 	*-torch.sh) run "$cmd" "$f" off;;
