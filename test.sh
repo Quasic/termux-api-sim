@@ -93,7 +93,11 @@ do
     }
   ]
 }'
-		chk "$cmd $f checkbox -v random@" "$ch" "$n" "$ni"
+		ch0='{
+  "code": -1,
+  "text": "[]"
+}'
+		chk "$cmd $f checkbox -v random@" "$ch" "$n" "$ni" "$ch0"
 		chk "$cmd $f radio -v random@" "$y" "$n" "$ni"
 		chk "$cmd $f sheet -v random@" "$sh" "$n" "$ni"
 		chk "$cmd $f spinner -v random@" "$y" "$n" "$ni"

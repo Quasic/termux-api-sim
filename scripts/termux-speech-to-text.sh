@@ -579,7 +579,7 @@ setQuestion(){
 	1)
 		setSubj
 		setVerbPrep
-		if [ who != "$q" ]&&[ what != "$q" ]&&((RANDOM&1))
+		if [ "$q" != who ]&&[ "$q" != what ]&&((RANDOM&1))
 		then
 			setObj
 			Obj=" $Obj"
@@ -605,7 +605,7 @@ setQuestion(){
 	2)
 		setSubj plural
 		setVerbPhrase plural
-		if [ who != "$q" ]&&[ what != "$q" ]&&((RANDOM&1))
+		if [ "$q" != who ]&&[ "$q" != what ]&&((RANDOM&1))
 		then
 			setObj
 			Obj=" $Obj"

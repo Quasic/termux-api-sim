@@ -5,24 +5,49 @@ DEFAULT_WIDGET="text"
 
 SCRIPTNAME=termux-dialog
 show_usage() {
-    echo "Usage: $SCRIPTNAME widget [options]"
-    echo "Simulate user input w/ different widgets! Default: $DEFAULT_WIDGET"
-    echo "   -h, help   Show this help"
-    echo "   -l, list   List all widgets and their options"
-    echo "   -t, title  Set title of input dialog (optional)"
+	cat >&2 <<EOF
+Usage: $SCRIPTNAME [widget] [options]
+Simulate user input w/ different widgets! Default: $DEFAULT_WIDGET
+   [-h] Show this help
+   [-l] List all widgets and their options
+   $OPT_TITLE_DESC
+
+This simulation returns a random result.
+Sim filters limit the allowed responses.
+A sim filter may be given in \$TERMUX_DIALOG_SIM, -t, or -i,
+in that order of precedence. Additionally, each item in -v may be one.
+Example Filters:
+no@ or cancel@ chooses to cancel if that is an option
+yes@ or pick@ try to not cancel
+maybe@ or random@ explicitly choose randomly
+pick@<option> chooses that option if found
+index@<#> choose option with that index# or other numeric parameter
+turn@ simulate bugged output as when changing orientation in old versions
+Each widget uses these a little differently.
+See their list and individual help for more specific info:
+$SCRIPTNAME -l
+$SCRIPTNAME <Widget> -h
+EOF
     exit 0
 }
 
 declare -a widgets=("confirm" "checkbox" "counter" "date" "radio" "sheet" "spinner" "speech" "text" "time")
 
 # Descriptions for various options that multiple widgets can use
-OPT_HINT_DESC="[-i hint] text hint (optional)"
+OPT_HINT_DESC="[-i hint] text hint (used for sim filter if not -t title, optional)"
 OPT_MULTI_LINE_DESC="[-m] multiple lines instead of single (optional)"
 OPT_PASS_DESC="[-p] enter input as password (optional)"
 OPT_NUMERIC_DESC="[-n] enter input as numbers (optional)"
-OPT_TITLE_DESC="[-t title] set title of dialog (optional)"
+#shellcheck disable=SC2016
+OPT_TITLE_DESC='[-t filter] Sim filter if not in $TERMUX_DIALOG_SIM (optional)
+(-t title is dialog title in real version)'
 OPT_RANGE_DESC="[-r min,max,start] comma delim of (3) numbers to use (optional)"
-OPT_VALUES_DESC="[-v \",,,\"] comma delim values to use (required)"
+OPT_VALUES_DESC="[-v \",,,\"] comma delim values to use (required)
+special values:
+yes@ or pick@ will choose or check that item
+no@ will avoid checking or choosing that item
+maybe@ or random@ may or may not choose or check that item
+otherwise, the main filter applies"
 OPT_DATEFORMAT_DESC="[-d \"dd-MM-yyyy k:m:s\"] SimpleDateFormat Pattern for date widget output (optional)"
 
 # Widget hints
@@ -72,78 +97,205 @@ NUM_FLAG=32
 FLAGS=0
 
 
-# Show usage help for specific widget
-widget_usage () {
-    echo -n -e "$1 - "
+# Show usage help for a specific widget
+widget_usage() {
+    local widget=$1
 
-    case "$1" in
-        "confirm")
-            echo "Show confirmation dialog"
-            echo "    $OPT_HINT_DESC"
-            echo "    $OPT_TITLE_DESC"
+    case "$widget" in
+        confirm)
+            cat <<EOF
+$widget - Show a confirmation dialog
+
+Options:
+  $OPT_HINT_DESC
+  $OPT_TITLE_DESC
+
+Simulation filters:
+  yes@                  Return yes
+  no@ or cancel@        Return no
+  pick@yes              Return yes
+  pick@no               Return no
+EOF
             ;;
-        "checkbox")
-            echo "Select multiple values using checkboxes"
-            echo "    $OPT_VALUES_DESC"
-            echo "    $OPT_TITLE_DESC"
+
+        checkbox)
+            cat <<EOF
+$widget - Select zero or more values using checkboxes
+
+Options:
+  $OPT_VALUES_DESC
+  $OPT_TITLE_DESC
+
+Simulation filters:
+  yes@                  Check a value and choose ok
+  no@                   Check no values
+  maybe@ or random@     Randomly check a value
+  pick@[index,...]      Check values by zero-based index
+  pick@[text,...]       Check values by displayed text
+  cancel@               Cancel the dialog
+EOF
             ;;
-        "counter")
-            echo "Pick a number in specified range"
-            echo "    $OPT_RANGE_DESC"
-            echo "    $OPT_TITLE_DESC"
+
+        counter)
+            cat <<EOF
+$widget - Pick a number in a specified range
+
+Options:
+  $OPT_RANGE_DESC
+
+The range consists of minimum, maximum, and starting values:
+  -r min,max,start
+
+Defaults:
+  Minimum: 0
+  Maximum: 100
+  Start:   50
+
+  $OPT_TITLE_DESC
+
+Simulation filters:
+  index@number          Use the specified number
+  cancel@ or no@        Cancel the dialog
+EOF
             ;;
-        "date")
-            echo "Pick a date"
-            echo "    $OPT_TITLE_DESC"
-            echo "    $OPT_DATEFORMAT_DESC"
+
+        date)
+            cat <<EOF
+$widget - Pick a date (default is within 35 yeats of now)
+
+Options:
+  $OPT_DATEFORMAT_DESC
+  $OPT_TITLE_DESC
+
+Simulation filters:
+  cancel@ or no@        Cancel the dialog
+  yes@                  Tries not to cancel
+  pick@<date>           Uses this date (uses date -d <date>)
+  index@<#>             Picks a date within # days of now (uses date -d "... days")
+EOF
             ;;
-        "radio")
-            echo "Pick a single value from radio buttons"
-            echo "    $OPT_VALUES_DESC"
-            echo "    $OPT_TITLE_DESC"
+
+        radio)
+            cat <<EOF
+$widget - Pick one value from a group of radio buttons
+
+Options:
+  $OPT_TITLE_DESC
+  $OPT_VALUES_DESC
+
+Simulation filters:
+  yes@                  Select the first eligible value
+  pick@text             Select the value matching text
+  index@number          Select the value at the zero-based index
+  maybe@ or random@     Randomly select a value
+  no@ or cancel@        Cancel the dialog
+EOF
             ;;
-        "sheet")
-            echo "Pick a value from sliding bottom sheet"
-            echo "    $OPT_VALUES_DESC"
-            echo "    $OPT_TITLE_DESC"
+
+        sheet)
+            cat <<EOF
+$widget - Pick one value from a sliding bottom sheet
+
+Options:
+  $OPT_TITLE_DESC
+  $OPT_VALUES_DESC
+
+Simulation filters:
+  yes@ or pick@         Select the first eligible value
+  pick@text             Select the value matching text
+  index@number          Select the value at the zero-based index
+  maybe@ or random@     Randomly select a value
+  no@ or cancel@        Cancel the dialog
+EOF
             ;;
-        "speech")
-            echo "Obtain speech using device microphone"
-            echo "    $OPT_HINT_DESC"
-            echo "    $OPT_TITLE_DESC"
+
+        speech)
+            cat <<EOF
+$widget - Obtain speech input using the device microphone
+
+Options:
+  $OPT_HINT_DESC
+  $OPT_TITLE_DESC
+
+Simulation filters:
+  cancel@ or no@        Cancel the dialog
+  turn@                 Simulate an orientation-change response
+
+If available, termux-speech-to-text.sh is sourced to generate speech-like
+responses. Otherwise, simulated text is generated locally.
+EOF
             ;;
-        "spinner")
-            echo "Pick a single value from a dropdown spinner"
-            echo "    $OPT_VALUES_DESC"
-            echo "    $OPT_TITLE_DESC"
+
+        spinner)
+            cat <<EOF
+$widget - Pick one value from a dropdown spinner
+
+Options:
+  $OPT_TITLE_DESC
+  $OPT_VALUES_DESC
+
+Simulation filters:
+  yes@ or pick@         Select the first eligible value
+  pick@text             Select the value matching text
+  index@number          Select the value at the zero-based index
+  maybe@ or random@     Randomly select a value
+  no@ or cancel@        Cancel the dialog
+EOF
             ;;
-        "text")
-            echo "Input text (default if no widget specified)"
-            echo "    $OPT_HINT_DESC"
-            echo "    $OPT_MULTI_LINE_DESC*"
-            echo "    $OPT_NUMERIC_DESC*"
-            echo "    $OPT_PASS_DESC"
-            echo "    $OPT_TITLE_DESC"
-            echo "       * cannot use [-m] with [-n]"
+
+        text)
+            cat <<EOF
+$widget - Enter text (the default widget)
+
+Options:
+  $OPT_HINT_DESC
+  $OPT_MULTI_LINE_DESC
+  $OPT_NUMERIC_DESC
+  $OPT_PASS_DESC
+  $OPT_TITLE_DESC
+
+Notes:
+  -m and -n cannot be used together.
+  -p masks the entered value as a password.
+  -n generates or accepts numeric input.
+  -m allows multiline input.
+
+Simulation filters:
+  cancel@ or no@        Cancel the dialog
+  index@number          Generate text with approximately that length
+EOF
             ;;
-        "time")
-            echo "Pick a time value"
-            echo "    $OPT_TITLE_DESC"
+
+        time)
+            cat <<EOF
+$widget - Pick a time value
+
+Options:
+  $OPT_TITLE_DESC
+
+Output format:
+  HH:MM using a 24-hour clock
+
+Simulation filters:
+  cancel@ or no@        Cancel the dialog
+EOF
             ;;
+
         *)
-            echo "    Unknown usage for '$1'"
+            printf "Unknown widget: %s\n" "$widget"
+            return 1
             ;;
     esac
 }
 
 # List all widgets
 list_widgets() {
-    echo "Supported widgets:"
-    echo
+    printf 'Supported widgets:\n\n'
 
+    local w
     for w in "${widgets[@]}"; do
         widget_usage "$w"
-        echo
+        printf \\n
     done
 }
 
@@ -277,7 +429,7 @@ look=''
 trysimread(){
 	case "$1" in
 	'') return 1;;
-	cancel@|no@) code=-2;return 0;;
+	cancel@|no@) code=-2;return 0;; #TODO: checkbox can have no mean no checks
 	yes@) code=-1;return 0;;
 	pick@*) code=-1;text="${1#pick@}";look=text;return 0;;
 	index@*)
@@ -287,7 +439,7 @@ trysimread(){
 		*) code=-1;look=index;return 0;;
 		esac;;
 	turn@) code=-2;incomp=1;return 0;;
-	random@) return 0;;
+	random@|maybe@) return 0;;
 	esac
 	return 1
 }
@@ -368,26 +520,51 @@ counter)
 		fi
 	fi;;
 checkbox)
+ [ '' = "$code" ]&&if ((RANDOM%50==0))
+ then code=-2
+ else code=-1
+ fi
+ if [ -2 = "$code" ]
+ then text=''
+ else
 	V=()
 	Y=()
+	declare -A B
 	while read -rd, v
 	do
-		i=${#V[*]}
+		i=${#V[@]}
 		V[i]="$v"
+		B[$v]+="$i,"
 		case "$v" in
 		yes@) Y[i]=1;;
 		no@) Y[i]=0;;
 		maybe@|random@) Y[i]=$((RANDOM&1));;
-		'') [ -z "$code" ]&&Y[i]=$((RANDOM&3));;
+		*)
+			if [ -z "$text" ]&&(((RANDOM&3)==0))
+			then Y[i]=1
+			else Y[i]=''
+			fi
 		esac
 	done <<<"$OPT_V,"
-	if [[ "$text" = [*] ]]
+	if [[ "$text" = \[*\] ]]
 	then
-		t="${text#[}"
-		t="${t%]}"
+		t="${text#\[}"
 		while read -rd, v
-		do [[ "$v" =~ [^0-9] ]]||Y[v]=1
-		done
+		do
+			# not quite json unquote, but for now
+			printf -v v %b "$v"
+			if [ -n "${B[$v]}" ]
+			then
+				read -rd, -a A<<<"${B[$v]}"
+				for ((i=0;i<${#A[@]};i++))
+				do
+					[ -z "${Y[A[i]]}" ]&&{
+						Y[A[i]]=1
+						break
+					}
+				done
+			fi
+		done <<<"${t%\]},"
 	fi
 	text=''
 	for ((i=0;i<${#V[*]};i++))
@@ -408,12 +585,11 @@ checkbox)
 		fi
 	done
 	if [ -n "$text" ]
-	then
-		code=-1
-		text+=']'
-	else code=-2
+	then text+=']'
+	else text='[]'
 	fi
-	index='';;
+ fi
+ index='';;
 radio|sheet|spinner)
 	V=()
 	while read -rd, v
@@ -605,10 +781,27 @@ time)
 	fi
 	index='';; # real returns random index sometimes (last one sent)
 date)
-	if [ "$code" = '' ]
+	if [ "$look" = index ]
 	then
+		if ((RANDOM&1))
+		then offset=-1
+		else offset=1
+		fi
+		text=$(date -d "$(((RANDOM%index)*offset)) days" '+%a %b %d 00:00:00 %Z %Y')
+		code=-1
+	elif [ "$look" = text ]
+	then
+		# Validate and normalize a simulated date selection.
+		if ! text=$(date -d "$text" '+%a %b %d 00:00:00 %Z %Y')
+		then
+			code=-2
+			text=''
+		fi
+	elif [ "$code" = -2 ]
+	then text=''
+	else
 		# Randomly simulate either cancellation or a date within ±34 years.
-		if [ $((RANDOM % 50)) = 0 ]
+		if [ "$code" != -1 ]&&[ $((RANDOM % 50)) = 0 ]
 		then
 			code=-2
 			text=''
@@ -625,34 +818,22 @@ date)
 				code=-1
 			fi
 		fi
-	elif [ "$code" = -1 ]
-	then
-		# Validate and normalize a simulated date selection.
-		if ! text=$(date -d "$text" '+%a %b %d 00:00:00 %Z %Y')
-		then
-			code=-2
-			text=''
-		fi
-	else
-		code=-2
-		text=''
 	fi
 	index='';;
 *)
 ARG_W="--es input_method"
 
 # Set options, ensuring whitespace isn't lost
-echo "w  $ARG_W $WIDGET"
-echo "i $ARG_I $OPT_I"
-echo "t $ARG_T $OPT_T"
-echo "r $ARG_R $OPT_R"
-echo "v $ARG_V $OPT_V"
-echo "m $ARG_M $OPT_M"
-echo "p $ARG_P $OPT_P"
-echo "n $ARG_N $OPT_N"
-echo "d  $ARG_D $OPT_D"
-
-printf %s\\n "$*"
+error="unknown widget: $WIDGET
+w $ARG_W $WIDGET
+i $ARG_I $OPT_I
+t $ARG_T $OPT_T
+r $ARG_R $OPT_R
+v $ARG_V $OPT_V
+m $ARG_M $OPT_M
+p $ARG_P $OPT_P
+n $ARG_N $OPT_N
+d $ARG_D $OPT_D"
 esac
 
 json_quote "$text"
