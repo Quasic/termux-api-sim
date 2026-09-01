@@ -97,6 +97,10 @@ do
 		chk "$cmd $f radio -v random@" "$y" "$n" "$ni"
 		chk "$cmd $f sheet -v random@" "$sh" "$n" "$ni"
 		chk "$cmd $f spinner -v random@" "$y" "$n" "$ni"
+		# test when source fails
+		if [ -d /dev/shm ]&&cp "$f" /dev/shm/termux-dialog.sh
+		then run "$cmd" /dev/shm/termux-dialog.sh
+		fi
 		run "$cmd" "$f";;
 	*-torch.sh) run "$cmd" "$f" off;;
 	*-clipboard-set.sh)
