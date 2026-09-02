@@ -564,12 +564,12 @@ setSentence(){
 	w+=" $Obj"
 	#TODO: other clauses -- prep : ; conj
 	case $((RANDOM&15)) in
-	0) plural='?';;
-	1|9) plural='!';;
-	2) plural='!?';;
-	*) plural=.
+	0) w+='?';;
+	1|9) w+='!';;
+	2) w+='!?';;
+	*) w="${w%.}."
 	esac
-	Sentence="${w^}$plural"
+	Sentence="${w^}"
 }
 interrogative=(who what when where why how)
 setQuestion(){
@@ -604,7 +604,7 @@ setQuestion(){
 		q+=" $Subj $Adv$Verb$Prep$Obj";;
 	2)
 		setSubj plural
-		setVerbPhrase plural
+		setVerbPrep
 		if [ "$q" != who ]&&[ "$q" != what ]&&((RANDOM&1))
 		then
 			setObj
