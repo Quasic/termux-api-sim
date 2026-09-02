@@ -626,7 +626,7 @@ setQuestion(){
 		q+=" $Subj $Adv$Verb$Prep$Obj";;
 	3) : #who/what is ving that? where/why/how is s/that [NounPhrase]? or ... are s pl/they/those [NounPhrase pl]
 	esac
-	Question="${q^}"
+	Question="${q^}?"
 }
 
 [[ "${BASH_SOURCE[0]}" != "$0" ]]||{
