@@ -614,9 +614,17 @@ setQuestion(){
 		if ((RANDOM&1))
 		then
 			participleVerb
-			if ((RANDOM&1))
-			then q+=" were"
-			else q+=" are"
+			if [ "$Subj" = I ]
+			then
+				if ((RANDOM&1))
+				then q+=" was"
+				else q+=" am"
+				fi
+			else
+				if ((RANDOM&1))
+				then q+=" were"
+				else q+=" are"
+				fi
 			fi
 		elif ((RANDOM&1))
 		then q+=" did"
