@@ -16,7 +16,7 @@ printf 'Clipfile: %s\n' "$clipfile"
 r=0
 fail(){
 	printf ^^^^^^^^^^^^^%s^^^^^^^^^^^^\\n "$1"
-	l="$1
+	l="Error: $1
 $l"
 	r=1
 }
@@ -116,22 +116,33 @@ do
 		done
 		if [ -z "$d" ]
 		then printf 'Skipping dialog unsourced stt test\n'
-		else run "$cmd" "$d/termux-dialog.sh"
+		else run "$cmd" "$d/termux-dialog.sh" speech -t index@99
 			rm "$d/termux-dialog.sh"
 		fi
 		run "$cmd" "$f";;
-	*-torch.sh) run "$cmd" "$f" off;;
-	*-clipboard-set.sh)
-		run "$cmd" "$f"
-		run "$cmd" "scripts/termux-clipboard-get.sh"
-		t="testing 1,2,3..."
-		run "$cmd" "$f" "$t"
-		[ "$t" = "$(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2)" ]||fail "clipboard get differs from $t"
-		t="testing again 1,2, a 1 2 3 4..."
-		run "$cmd" "$f"<<EOF
-$t
+	*-toast.sh)
+		chk "TERMUX_TOASTFILE=/dev/fd/1 $cmd $f" '@TERMUX_PREFIX@/libexec/termux-api Toast  '
+		chk "TERMUX_TOASTFILE=/dev/fd/1 $cmd $f '$t1'" "@TERMUX_PREFIX@/libexec/termux-api Toast  $t1"
+		chk "TERMUX_TOASTFILE=/dev/fd/1 $cmd $f" "@TERMUX_PREFIX@/libexec/termux-api Toast  $ta" <<EOF
+$ta
 EOF
-		[ "$t" = "$(run "$cmd" "scripts/termux-clipboard-get.sh"|tee /dev/fd/2)" ]||fail "clipboard get differs from $t";;
+	;;
+	*-torch.sh)
+		chk "TERMUX_TORCHFILE=/dev/fd/1 $cmd $f on" '@TERMUX_PREFIX@/libexec/termux-api Torch --ez enabled true'
+		chk "TERMUX_TORCHFILE=/dev/fd/1 $cmd $f off" '@TERMUX_PREFIX@/libexec/termux-api Torch --ez enabled false';;
+	*-clipboard-get.sh)
+		chk "TERMUX_CLIPFILE=/dev/fd/0 $cmd $f" ''
+		chk "TERMUX_CLIPFILE=/dev/fd/0 $cmd $f" "$t1" <<EOF
+$t1
+EOF
+	;;
+	*-clipboard-set.sh)
+		chk "TERMUX_CLIPFILE=/dev/fd/1 $cmd $f" ''
+		chk "TERMUX_CLIPFILE=/dev/fd/1 $cmd $f '$t1'" "$t1"
+		chk "TERMUX_CLIPFILE=/dev/fd/1 $cmd $f" "$ta" <<EOF
+$ta
+EOF
+	;;
 	*) run "$cmd" "$f"
 	esac
 done
