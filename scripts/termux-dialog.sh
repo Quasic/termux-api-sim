@@ -416,6 +416,19 @@ if [ $# -gt 0 ]; then
     show_usage
 fi
 
+ARG_W="--es input_method"
+
+dump="codes:
+w $ARG_W $WIDGET
+i $ARG_I $OPT_I
+t $ARG_T $OPT_T
+r $ARG_R $OPT_R
+v $ARG_V $OPT_V
+m $ARG_M $OPT_M
+p $ARG_P $OPT_P
+n $ARG_N $OPT_N
+d $ARG_D $OPT_D"
+
 # https://github.com/termux/termux-api/blob/master/app%2Fsrc%2Fmain%2Fjava%2Fcom%2Ftermux%2Fapi%2Fapis%2FDialogAPI.java
 
 code=''
@@ -716,6 +729,8 @@ t+='ⁿ¹²³⁴⁵⁶⁷⁸⁹⁰⅞⅚⅝⅘¾⅗⅜⅔⅖½⅓¼⅕⅙⅛ýþ
 t+='àáâãäåæāăąªß§śšşďđģğķĺļľłñńņňçćčźżž'
 t+='🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇😊😉🙃🙂😂🤣😅😆😁😄😃😀🏁'
 
+			[ -n "$ARG_M" ]&&text="$dump"
+
 			while [ ${#text} -lt "$c" ]
 			do
 				if [ text = "$WIDGET" ]&&(((RANDOM&7)==0))
@@ -821,20 +836,8 @@ date)
 		fi
 	fi
 	index='';;
-*)
-ARG_W="--es input_method"
-
-# Set options, ensuring whitespace isn't lost
-error="unknown widget: $WIDGET
-w $ARG_W $WIDGET
-i $ARG_I $OPT_I
-t $ARG_T $OPT_T
-r $ARG_R $OPT_R
-v $ARG_V $OPT_V
-m $ARG_M $OPT_M
-p $ARG_P $OPT_P
-n $ARG_N $OPT_N
-d $ARG_D $OPT_D"
+*) error="unknown widget: $WIDGET
+$dump"
 esac
 
 json_quote "$text"

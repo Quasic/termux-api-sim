@@ -74,7 +74,7 @@ do
 	esac
 	case "$f" in
 	*-dialog.sh)
-		for p in -l confirm counter date speech text -n -m time
+		for p in -l confirm counter date speech text -n -mp time
 		do run "$cmd" "$f" "$p"
 		done
 		y='{
