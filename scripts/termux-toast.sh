@@ -3,7 +3,7 @@ set -e -u
 
 SCRIPTNAME=termux-toast
 
-for toastfile in "${TERMUX_TOASTFILE:-}" "${TERMUX_SIM_DIR:-}/termux.toast" /dev/shm/termux.toast /tmp/termux.toast ~/termux.toast
+for toastfile in "${TERMUX_TOASTFILE:-${TERMUX_SIM_DIR:-/dev/shm}/termux.toast}" /tmp/termux.toast "${HOME:-~}/termux.toast"
 do [ -n "$toastfile" ]&&touch "$toastfile" 2>/dev/null&&break
 done
 

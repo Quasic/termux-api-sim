@@ -3,7 +3,7 @@ cd -- "$(dirname -- "$0")" || exit 1
 
 exec </dev/null
 
-for f in "${TERMUX_CLIPFILE:-}" "${TERMUX_SIM_DIR:-}/termux.clip" /dev/shm/termux.clip /tmp/termux.clip "$HOME/termux.clip"
+for f in "${TERMUX_CLIPFILE:-${TERMUX_SIM_DIR:-/dev/shm}/termux.clip}" /tmp/termux.clip "${HOME:-~}/termux.clip"
 do
 	if [ -f "$f" ]
 	then printf 'Removing %s for tests, contents:\n' "$f"&&cat "$f"&&printf '' >"$f"&&[ -z "$clipfile" ]&&clipfile="$f"
