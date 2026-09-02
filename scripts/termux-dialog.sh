@@ -743,11 +743,12 @@ t+='🥭🍍🍌🍋🍊🍉🍈🍇🍒🍎🍏🍐🍓😋😛🤩😍🥰😇
 					if ((RANDOM&1))
 					then
 						setSentence
-						w="$Sentence "
+						w="$Sentence"
 					else
 						setQuestion
-						w="$Question "
+						w="$Question"
 					fi
+					((RANDOM&1))||w+=' '
 				fi
 				if [ -n "$ARG_M" ]&&[ $((RANDOM&7)) = 0 ]
 				then text+="$w
