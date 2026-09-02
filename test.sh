@@ -56,6 +56,9 @@ then
 	done
 else printf 'Not running on termux, skipping comparison\n'
 fi
+run bash -c 'source scripts/termux-speech-to-text.sh'
+t1="testing 1,2,3..."
+ta="testing again 1,2, a 1 2 3 4..."
 for f in scripts/*.sh
 do
 	case "$(sed Nq "$f" 2>/dev/null)" in

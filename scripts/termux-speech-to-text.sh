@@ -1,5 +1,5 @@
 #!/bin/bash
-set -u
+set +e -u
 
 alphabet=abcdefghijklmnopqrstuvwxyz
 
@@ -8,8 +8,8 @@ middles=(ma na ra la ti ven fer port)
 endings=(ing er ed ly tion ment ness able)
 setWordGlish(){
 	Word=${beginnings[RANDOM % ${#beginnings[@]}]}
-	(( RANDOM & 1 )) && Word+=${middles[RANDOM % ${#middles[@]}]}
-	(( RANDOM & 1 )) && Word+=${endings[RANDOM % ${#endings[@]}]}
+	(( RANDOM & 1 )) || Word+=${middles[RANDOM % ${#middles[@]}]}
+	(( RANDOM & 1 )) || Word+=${endings[RANDOM % ${#endings[@]}]}
 }
 
 subject=(he she it one that this 'this one' 'that one')
@@ -34,13 +34,13 @@ place_endings=(
 )
 setNamePlace(){
 	Name="${name_beginnings[RANDOM%${#name_beginnings[@]}]}"
-	((RANDOM&1))&&Name+="${name_middles[RANDOM%${#name_middles[@]}]}"
+	((RANDOM&1))||Name+="${name_middles[RANDOM%${#name_middles[@]}]}"
 	Name+="${place_endings[RANDOM%${#place_endings[@]}]}"
 	Name="${Name^}"
 }
 setName(){
 	Name="${name_beginnings[RANDOM%${#name_beginnings[@]}]}"
-	((RANDOM&1))&&Name+="${name_middles[RANDOM%${#name_middles[@]}]}"
+	((RANDOM&1))||Name+="${name_middles[RANDOM%${#name_middles[@]}]}"
 	if [ -n "${1:-}" ]
 	then Name+="${surname_endings[RANDOM%${#surname_endings[@]}]}"
 	elif (((RANDOM&3)==0))
@@ -629,7 +629,7 @@ setQuestion(){
 	Question="${q^}"
 }
 
-[[ "${BASH_SOURCE[0]}" == "$0" ]]&&{
+[[ "${BASH_SOURCE[0]}" != "$0" ]]||{
 
 SCRIPTNAME=termux-speech-to-text
 show_usage () {
