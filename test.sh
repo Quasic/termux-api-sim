@@ -156,6 +156,7 @@ then
 	printf 'Clipfile contents changed to:\n'
 	cat "$clipfile"
 	fail 'clipfile changed'
+else printf 'Clipfile Pass\n'
 fi
 if [ 0 = "$r" ]
 then printf 'Pass All\n'
