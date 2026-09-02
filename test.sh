@@ -5,13 +5,18 @@ exec </dev/null
 
 for f in "${TERMUX_CLIPFILE:-${TERMUX_SIM_DIR:-/dev/shm}/termux.clip}" /tmp/termux.clip "${HOME:-~}/termux.clip"
 do
-	if [ -f "$f" ]
-	then printf 'Removing %s for tests, contents:\n' "$f"&&cat "$f"&&printf '' >"$f"&&[ -z "$clipfile" ]&&clipfile="$f"
-	elif [ -z "$clipfile" ]
-	then touch "$f"&&clipfile="$f"
+	if [ -z "$clipfile" ]
+	then touch "$f"&&clipfile="$f"&&break
+	elif [ -f "$f" ]
+	then
+		printf 'Unused clipfile found at %s with contents:\n' "$f"
+		cat "$f"
+		l="Warning: Unused clipfile $f
+$l"
 	fi
 done
-printf 'Clipfile: %s\n' "$clipfile"
+clipfilecontents=$(cat "$clipfile")
+printf 'Clipfile: %s Contents:\n%s\n' "$clipfile" "$clipfilecontents"
 
 r=0
 fail(){
@@ -146,8 +151,12 @@ EOF
 	*) run "$cmd" "$f"
 	esac
 done
-printf 'Clipfile contents:\n'
-cat "$clipfile"
+if [ "$clipfilecontents" != "$(cat "$clipfile")" ]
+then
+	printf 'Clipfile contents changed to:\n'
+	cat "$clipfile"
+	fail 'clipfile changed'
+fi
 if [ 0 = "$r" ]
 then printf 'Pass All\n'
 else printf 'Failures:\n%s' "$l"
